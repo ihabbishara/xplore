@@ -25,6 +25,25 @@ model User {
   profile        UserProfile?
   refreshTokens  RefreshToken[]
   savedLocations UserSavedLocation[]
+  trips          Trip[]
+  collaboratingTrips TripCollaborator[]
+  invitedCollaborators TripCollaborator[] @relation("InvitedCollaborators")
+  journalEntries JournalEntry[]
+  checklists     Checklist[]
+  assignedChecklistItems ChecklistItem[] @relation("AssignedChecklistItems")
+  completedChecklistItems ChecklistItem[] @relation("CompletedChecklistItems")
+  checklistCollaborations ChecklistCollaborator[]
+  savedProperties UserSavedProperty[]
+  locationAnalytics LocationAnalytics[]
+  explorationInsights ExplorationInsight[]
+  locationComparisons LocationComparison[]
+  dashboardCache DashboardCache[]
+  decisionMatrices DecisionMatrix[]
+  behaviorPatterns UserBehaviorPattern[]
+  predictiveModels PredictiveModel[]
+  exportHistory ExportHistory[]
+  exportSchedules ExportSchedule[]
+  processingJobs AnalyticsProcessingJob[]
 
   @@map("users")
 }
@@ -108,6 +127,9 @@ model Location {
 
   // Relations
   savedByUsers UserSavedLocation[]
+  tripDestinations TripDestination[]
+  journalEntries JournalEntry[]
+  analytics LocationAnalytics[]
 
   @@index([country, city])
   @@index([latitude, longitude])
@@ -134,4 +156,881 @@ model UserSavedLocation {
   @@index([userId])
   @@index([customTags])
   @@map("user_saved_locations")
+}
+
+// Trip planning models
+model Trip {
+  id                String    @id @default(uuid())
+  name              String
+  description       String?   @db.Text
+  creatorId         String    @map("creator_id")
+  startDate         DateTime  @map("start_date")
+  endDate           DateTime  @map("end_date")
+  status            String    @default("draft") // 'draft', 'planned', 'in_progress', 'completed', 'cancelled'
+  visibility        String    @default("private") // 'private', 'shared', 'public'
+  tripType          String?   @map("trip_type") // 'relocation_exploration', 'vacation', 'business', 'adventure'
+  coverImageUrl     String?   @map("cover_image_url")
+  estimatedBudget   Decimal?  @map("estimated_budget") @db.Decimal(10, 2)
+  actualBudget      Decimal?  @map("actual_budget") @db.Decimal(10, 2)
+  currency          String    @default("USD") @db.VarChar(3)
+  settings          Json?     // { notifications_enabled, auto_weather_updates, etc. }
+  analytics         Json?     // { total_distance, countries_count, activities_count, etc. }
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  creator             User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  destinations        TripDestination[]
+  collaborators       TripCollaborator[]
+  segments            RouteSegment[]
+  weatherSummaries    TripWeatherSummary[]
+  journalEntries      JournalEntry[]
+  checklists          Checklist[]
+  relatedProperties   UserSavedProperty[]
+
+  @@index([creatorId])
+  @@index([startDate, endDate])
+  @@index([status])
+  @@map("trips")
+}
+
+// Trip destinations (locations within a trip)
+model TripDestination {
+  id                  String    @id @default(uuid())
+  tripId              String    @map("trip_id")
+  locationId          String    @map("location_id")
+  arrivalDate         DateTime  @map("arrival_date")
+  departureDate       DateTime  @map("departure_date")
+  dayOrder            Int       @map("day_order") // Order within the trip
+  accommodationType   String?   @map("accommodation_type") // 'hotel', 'airbnb', 'hostel', etc.
+  accommodationName   String?   @map("accommodation_name")
+  accommodationAddress String?  @map("accommodation_address")
+  activities          Json?     // Array of planned activities
+  notes               String?   @db.Text
+  weather             Json?     // Cached weather data
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  trip        Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  location    Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  segments    RouteSegment[]
+
+  @@index([tripId, dayOrder])
+  @@index([arrivalDate, departureDate])
+  @@map("trip_destinations")
+}
+
+// Route segments between destinations
+model RouteSegment {
+  id                String    @id @default(uuid())
+  tripId            String    @map("trip_id")
+  fromDestinationId String    @map("from_destination_id")
+  toDestinationId   String    @map("to_destination_id")
+  transportMode     String    @map("transport_mode") // 'car', 'train', 'flight', 'bus', 'walk', 'bike'
+  distance          Decimal?  @db.Decimal(10, 2) // in kilometers
+  duration          Int?      // in minutes
+  cost              Decimal?  @db.Decimal(10, 2)
+  currency          String?   @db.VarChar(3)
+  polyline          String?   @db.Text // Encoded route polyline
+  waypoints         Json?     // Array of waypoints
+  departureTime     DateTime? @map("departure_time")
+  arrivalTime       DateTime? @map("arrival_time")
+  bookingReference  String?   @map("booking_reference")
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  trip             Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  fromDestination  TripDestination @relation(fields: [fromDestinationId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([transportMode])
+  @@map("route_segments")
+}
+
+// Trip collaborators
+model TripCollaborator {
+  id          String    @id @default(uuid())
+  tripId      String    @map("trip_id")
+  userId      String    @map("user_id")
+  role        String    @default("viewer") // 'owner', 'editor', 'viewer'
+  permissions Json?     // { can_edit_route, can_add_destinations, can_manage_budget, etc. }
+  invitedBy   String?   @map("invited_by")
+  invitedAt   DateTime  @map("invited_at")
+  acceptedAt  DateTime? @map("accepted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  trip     Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inviter  User? @relation("InvitedCollaborators", fields: [invitedBy], references: [id], onDelete: SetNull)
+
+  @@unique([tripId, userId])
+  @@index([userId])
+  @@index([role])
+  @@map("trip_collaborators")
+}
+
+// Trip weather summaries
+model TripWeatherSummary {
+  id              String    @id @default(uuid())
+  tripId          String    @map("trip_id")
+  destinationId   String?   @map("destination_id")
+  date            DateTime
+  weatherProvider String    @map("weather_provider") // 'openweather', 'accuweather', 'weatherapi'
+  temperature     Json      // { min, max, avg, feels_like }
+  conditions      String    // 'sunny', 'cloudy', 'rainy', etc.
+  precipitation   Decimal?  @db.Decimal(5, 2) // in mm
+  windSpeed       Decimal?  @map("wind_speed") @db.Decimal(5, 2) // in km/h
+  humidity        Int?      @db.SmallInt
+  uvIndex         Int?      @map("uv_index") @db.SmallInt
+  sunrise         DateTime?
+  sunset          DateTime?
+  alerts          Json?     // Weather alerts/warnings
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, date])
+  @@index([destinationId])
+  @@map("trip_weather_summaries")
+}
+
+// Journal entries
+model JournalEntry {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  tripId      String?   @map("trip_id")
+  locationId  String?   @map("location_id")
+  
+  title       String?   @db.VarChar(255)
+  content     String    @db.Text // Rich text content (Markdown/HTML)
+  entryType   String    @default("general") @map("entry_type") // 'general', 'food', 'accommodation', 'activity'
+  
+  // Location and timing
+  coordinates Json?     // { lat, lng }
+  address     String?   @db.Text
+  timezone    String?   @db.VarChar(50)
+  
+  // Privacy and sharing
+  privacyLevel String   @default("private") @map("privacy_level") // 'private', 'friends', 'public'
+  sharedWith   String[] @map("shared_with") // Array of user IDs
+  
+  // Metadata
+  weatherData Json?     @map("weather_data") // Weather at time of creation
+  tags        String[]
+  mood        Int?      @db.SmallInt // 1=terrible, 5=amazing
+  isFavorite  Boolean   @default(false) @map("is_favorite")
+  
+  // Sync and offline
+  localId     String?   @map("local_id") @db.VarChar(255) // For offline sync
+  syncStatus  String    @default("synced") @map("sync_status") // 'pending', 'synced', 'conflict'
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip                Trip?                 @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  location            Location?             @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  media               JournalMedia[]
+  voiceTranscriptions VoiceTranscription[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([tripId])
+  @@index([locationId])
+  @@index([tags])
+  @@index([entryType])
+  @@index([privacyLevel])
+  @@map("journal_entries")
+}
+
+// Journal media (photos, videos, audio)
+model JournalMedia {
+  id                String    @id @default(uuid())
+  entryId           String    @map("entry_id")
+  mediaType         String    @map("media_type") // 'photo', 'video', 'audio', 'document'
+  originalFilename  String?   @map("original_filename") @db.VarChar(255)
+  filePath          String    @map("file_path") @db.VarChar(500) // S3/R2 path
+  thumbnailPath     String?   @map("thumbnail_path") @db.VarChar(500)
+  fileSize          BigInt?   @map("file_size")
+  mimeType          String?   @map("mime_type") @db.VarChar(100)
+  durationSeconds   Int?      @map("duration_seconds") // For audio/video
+  
+  // Media metadata
+  exifData          Json?     @map("exif_data") // Camera settings, GPS from photo
+  altText           String?   @map("alt_text") @db.Text // Accessibility description
+  caption           String?   @db.Text
+  
+  // Processing status
+  processingStatus  String    @default("pending") @map("processing_status") // 'pending', 'processed', 'failed'
+  transcription     String?   @db.Text // For audio files
+  
+  orderIndex        Int       @default(0) @map("order_index")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  entry JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId, orderIndex])
+  @@map("journal_media")
+}
+
+// Voice recordings and transcriptions
+model VoiceTranscription {
+  id                String    @id @default(uuid())
+  entryId           String    @map("entry_id")
+  audioFilePath     String    @map("audio_file_path") @db.VarChar(500)
+  transcriptionText String?   @map("transcription_text") @db.Text
+  confidenceScore   Decimal?  @map("confidence_score") @db.Decimal(3, 2) // 0.00 to 1.00
+  language          String?   @db.VarChar(10)
+  processingStatus  String    @default("pending") @map("processing_status")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  entry JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId])
+  @@index([processingStatus])
+  @@map("voice_transcriptions")
+}
+
+// Checklists
+model Checklist {
+  id            String    @id @default(uuid())
+  name          String
+  description   String?
+  userId        String    @map("user_id")
+  tripId        String?   @map("trip_id")
+  templateId    String?   @map("template_id")
+  category      String?   // 'packing', 'documents', 'pre-trip', 'activities', etc.
+  isTemplate    Boolean   @default(false) @map("is_template")
+  isPublic      Boolean   @default(false) @map("is_public")
+  metadata      Json?     // { icon, color, auto_suggestions_enabled, etc. }
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip              Trip?                   @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  items             ChecklistItem[]
+  collaborators     ChecklistCollaborator[]
+
+  @@index([userId])
+  @@index([tripId])
+  @@index([category])
+  @@map("checklists")
+}
+
+// Checklist items
+model ChecklistItem {
+  id            String    @id @default(uuid())
+  checklistId   String    @map("checklist_id")
+  content       String
+  isCompleted   Boolean   @default(false) @map("is_completed")
+  completedAt   DateTime? @map("completed_at")
+  completedBy   String?   @map("completed_by")
+  priority      String?   // 'high', 'medium', 'low'
+  dueDate       DateTime? @map("due_date")
+  assignedTo    String?   @map("assigned_to")
+  notes         String?
+  orderIndex    Int       @map("order_index") @default(0)
+  metadata      Json?     // { quantity, category, weather_dependent, etc. }
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  checklist     Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  assignee      User?     @relation("AssignedChecklistItems", fields: [assignedTo], references: [id], onDelete: SetNull)
+  completedUser User?     @relation("CompletedChecklistItems", fields: [completedBy], references: [id], onDelete: SetNull)
+
+  @@index([checklistId, orderIndex])
+  @@index([assignedTo])
+  @@map("checklist_items")
+}
+
+// Checklist collaborators
+model ChecklistCollaborator {
+  id          String    @id @default(uuid())
+  checklistId String    @map("checklist_id")
+  userId      String    @map("user_id")
+  permissions Json      // { can_edit, can_complete, can_assign, etc. }
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  checklist Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([checklistId, userId])
+  @@index([userId])
+  @@map("checklist_collaborators")
+}
+
+// Properties (real estate listings)
+model Property {
+  id              String    @id @default(uuid())
+  
+  // Source and identification
+  sourceUrl       String    @unique @map("source_url") @db.VarChar(1000)
+  sourcePlatform  String?   @map("source_platform") @db.VarChar(100) // 'seloger', 'leboncoin', 'pap', etc.
+  externalId      String?   @map("external_id") @db.VarChar(255)
+  listingStatus   String    @default("active") @map("listing_status") @db.VarChar(50)
+  
+  // Basic property information
+  title           String?   @db.VarChar(500)
+  description     String?   @db.Text
+  propertyType    String?   @map("property_type") @db.VarChar(100)
+  transactionType String?   @map("transaction_type") @db.VarChar(50)
+  
+  // Pricing
+  price           Decimal?  @db.Decimal(15,2)
+  currency        String    @default("EUR") @db.VarChar(10)
+  pricePerSqm     Decimal?  @map("price_per_sqm") @db.Decimal(10,2)
+  monthlyCharges  Decimal?  @map("monthly_charges") @db.Decimal(10,2)
+  
+  // Property details
+  sizeSqm         Decimal?  @map("size_sqm") @db.Decimal(8,2)
+  rooms           Int?
+  bedrooms        Int?
+  bathrooms       Int?
+  floorNumber     Int?      @map("floor_number")
+  totalFloors     Int?      @map("total_floors")
+  yearBuilt       Int?      @map("year_built")
+  
+  // Location
+  address         String?   @db.Text
+  city            String?   @db.VarChar(100)
+  postalCode      String?   @map("postal_code") @db.VarChar(20)
+  region          String?   @db.VarChar(100)
+  country         String?   @db.VarChar(100)
+  coordinates     Json?     // { lat, lng }
+  
+  // Property features
+  features        Json?     // { balcony: true, parking: true, elevator: false }
+  energyRating    String?   @map("energy_rating") @db.VarChar(10)
+  
+  // Media and documents
+  photos          Json?     // Array of photo URLs
+  virtualTourUrl  String?   @map("virtual_tour_url") @db.VarChar(500)
+  floorPlanUrl    String?   @map("floor_plan_url") @db.VarChar(500)
+  
+  // Agent/Contact information
+  agentName       String?   @map("agent_name") @db.VarChar(255)
+  agentPhone      String?   @map("agent_phone") @db.VarChar(50)
+  agentEmail      String?   @map("agent_email") @db.VarChar(255)
+  agencyName      String?   @map("agency_name") @db.VarChar(255)
+  
+  // Data management
+  firstScrapedAt  DateTime  @default(now()) @map("first_scraped_at")
+  lastUpdated     DateTime  @updatedAt @map("last_updated")
+  lastPriceCheck  DateTime? @map("last_price_check")
+  scrapingErrors  Json?     @map("scraping_errors")
+  dataQualityScore Decimal? @map("data_quality_score") @db.Decimal(3,2)
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  savedByUsers    UserSavedProperty[]
+  priceHistory    PropertyPriceHistory[]
+
+  @@index([sourceUrl])
+  @@index([sourcePlatform])
+  @@index([city, country])
+  @@index([price, currency])
+  @@index([propertyType])
+  @@index([transactionType])
+  @@index([listingStatus])
+  @@map("properties")
+}
+
+// User saved properties
+model UserSavedProperty {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  propertyId        String    @map("property_id")
+  
+  // User customization
+  personalNotes     String?   @map("personal_notes") @db.Text
+  userRating        Int?      @map("user_rating") @db.SmallInt
+  visitStatus       String?   @map("visit_status") @db.VarChar(50)
+  visitDate         DateTime? @map("visit_date")
+  customTags        String[]  @map("custom_tags")
+  
+  // Decision tracking
+  pros              String[]  // Array of positive aspects
+  cons              String[]  // Array of negative aspects
+  priorityLevel     Int?      @map("priority_level") @db.SmallInt
+  
+  // Integration with exploration
+  relatedTripId     String?   @map("related_trip_id")
+  relatedJournalEntries String[] @map("related_journal_entries")
+  
+  savedAt           DateTime  @default(now()) @map("saved_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property          Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  relatedTrip       Trip?     @relation(fields: [relatedTripId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, propertyId])
+  @@index([userId])
+  @@index([visitStatus])
+  @@index([priorityLevel])
+  @@map("user_saved_properties")
+}
+
+// Property price history
+model PropertyPriceHistory {
+  id                    String    @id @default(uuid())
+  propertyId            String    @map("property_id")
+  price                 Decimal   @db.Decimal(15,2)
+  priceChangePercentage Decimal?  @map("price_change_percentage") @db.Decimal(5,2)
+  recordedAt            DateTime  @default(now()) @map("recorded_at")
+
+  // Relations
+  property              Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, recordedAt(sort: Desc)])
+  @@map("property_price_history")
+}
+
+// Scraping platform configurations
+model ScrapingPlatform {
+  id          String    @id @default(uuid())
+  platformName String   @unique @map("platform_name") @db.VarChar(100)
+  country     String?   @db.VarChar(10)
+  baseDomain  String?   @map("base_domain") @db.VarChar(255)
+  selectors   Json?     // CSS selectors for data extraction
+  headers     Json?     // Required headers for requests
+  rateLimitMs Int       @default(1000) @map("rate_limit_ms")
+  isActive    Boolean   @default(true) @map("is_active")
+  lastUpdated DateTime  @updatedAt @map("last_updated")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([platformName])
+  @@index([country])
+  @@index([isActive])
+  @@map("scraping_platforms")
+}
+
+// Analytics models for PER-16
+
+// Location analytics with comprehensive metrics
+model LocationAnalytics {
+  id                    String    @id @default(uuid())
+  locationId            String    @unique @map("location_id")
+  userId                String?   @map("user_id") // null for global analytics
+  
+  // Basic metrics
+  totalVisits           Int       @default(0) @map("total_visits")
+  totalTimeSpent        BigInt    @default(0) @map("total_time_spent") // in seconds
+  journalEntries        Int       @default(0) @map("journal_entries")
+  savedByUsers          Int       @default(0) @map("saved_by_users")
+  
+  // Sentiment analysis
+  averageSentiment      Decimal?  @map("average_sentiment") @db.Decimal(3,2) // -1 to 1
+  sentimentDistribution Json?     @map("sentiment_distribution") // {positive: 0.6, neutral: 0.3, negative: 0.1}
+  
+  // Cost analysis
+  averageCostRating     Decimal?  @map("average_cost_rating") @db.Decimal(3,2)
+  costBreakdown         Json?     @map("cost_breakdown") // {housing: 1800, food: 600, etc.}
+  affordabilityScore    Decimal?  @map("affordability_score") @db.Decimal(3,2)
+  
+  // Experience metrics
+  weatherRating         Decimal?  @map("weather_rating") @db.Decimal(3,2)
+  cultureRating         Decimal?  @map("culture_rating") @db.Decimal(3,2)
+  safetyRating          Decimal?  @map("safety_rating") @db.Decimal(3,2)
+  transportRating       Decimal?  @map("transport_rating") @db.Decimal(3,2)
+  
+  // Behavioral patterns
+  visitPatterns         Json?     @map("visit_patterns") // {seasonal: {}, daily: {}, duration: {}}
+  activityPreferences   Json?     @map("activity_preferences") // {outdoor: 0.7, cultural: 0.8, etc.}
+  
+  // Decision metrics
+  decisionFactors       Json?     @map("decision_factors") // {climate: 0.9, cost: 0.8, culture: 0.6}
+  relocateProb          Decimal?  @map("relocate_probability") @db.Decimal(3,2)
+  
+  // Comparison metrics
+  comparisonScore       Decimal?  @map("comparison_score") @db.Decimal(5,2)
+  rankingPosition       Int?      @map("ranking_position")
+  
+  // Metadata
+  lastCalculated        DateTime  @default(now()) @map("last_calculated")
+  dataQualityScore      Decimal?  @map("data_quality_score") @db.Decimal(3,2)
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  location              Location  @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user                  User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comparisons           LocationComparison[]
+  insights              ExplorationInsight[]
+
+  @@index([locationId])
+  @@index([userId])
+  @@index([averageSentiment])
+  @@index([comparisonScore])
+  @@index([lastCalculated])
+  @@map("location_analytics")
+}
+
+// User exploration insights and patterns
+model ExplorationInsight {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  locationAnalyticsId   String?   @map("location_analytics_id")
+  
+  // Insight metadata
+  insightType           String    @map("insight_type") // 'pattern', 'recommendation', 'warning', 'prediction'
+  category              String    // 'cost', 'climate', 'culture', 'decision', 'behavior'
+  priority              String    @default("medium") // 'high', 'medium', 'low'
+  confidence            Decimal   @db.Decimal(3,2) // 0.00 to 1.00
+  
+  // Insight content
+  title                 String    @db.VarChar(255)
+  content               String    @db.Text
+  actionable            Boolean   @default(false) // Can user act on this insight?
+  
+  // Supporting data
+  supportingData        Json?     @map("supporting_data") // Charts, metrics, references
+  relatedLocations      String[]  @map("related_locations") // Location IDs
+  
+  // User interaction
+  isViewed              Boolean   @default(false) @map("is_viewed")
+  isUseful              Boolean?  @map("is_useful") // User feedback
+  isDismissed           Boolean   @default(false) @map("is_dismissed")
+  
+  // Metadata
+  validUntil            DateTime? @map("valid_until")
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationAnalytics     LocationAnalytics? @relation(fields: [locationAnalyticsId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([insightType])
+  @@index([category])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([validUntil])
+  @@map("exploration_insights")
+}
+
+// Location comparison results
+model LocationComparison {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  
+  // Comparison metadata
+  comparisonName        String?   @map("comparison_name") @db.VarChar(255)
+  locationIds           String[]  @map("location_ids") // Array of location IDs being compared
+  
+  // Criteria and weights
+  criteria              Json      // {cost: 0.3, climate: 0.2, culture: 0.2, etc.}
+  
+  // Results
+  scores                Json      // {locationId: {total: 85, cost: 90, climate: 80, etc.}}
+  rankings              Json      // {1: locationId, 2: locationId, etc.}
+  winner                String?   // Location ID of the winner
+  
+  // Detailed analysis
+  strengths             Json?     // {locationId: ['affordable', 'great_weather']}
+  weaknesses            Json?     // {locationId: ['expensive', 'language_barrier']}
+  recommendations       Json?     // {locationId: 'Consider for short stays only'}
+  
+  // User interaction
+  isBookmarked          Boolean   @default(false) @map("is_bookmarked")
+  isFavorite            Boolean   @default(false) @map("is_favorite")
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationAnalytics     LocationAnalytics[]
+
+  @@index([userId])
+  @@index([locationIds])
+  @@index([createdAt])
+  @@map("location_comparisons")
+}
+
+// Dashboard cache for performance
+model DashboardCache {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  
+  // Cache metadata
+  cacheKey              String    @map("cache_key") @db.VarChar(255)
+  cacheType             String    @map("cache_type") // 'overview', 'comparison', 'insights', 'analytics'
+  
+  // Cache content
+  data                  Json      // Cached dashboard data
+  
+  // Cache management
+  expiresAt             DateTime  @map("expires_at")
+  lastAccessed          DateTime  @default(now()) @map("last_accessed")
+  accessCount           Int       @default(0) @map("access_count")
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cacheKey])
+  @@index([userId])
+  @@index([cacheType])
+  @@index([expiresAt])
+  @@map("dashboard_cache")
+}
+
+// User decision matrices
+model DecisionMatrix {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  
+  // Matrix metadata
+  name                  String    @db.VarChar(255)
+  description           String?   @db.Text
+  matrixType            String    @map("matrix_type") // 'location', 'property', 'general'
+  
+  // Matrix structure
+  criteria              Json      // {cost: {weight: 0.3, scale: 'lower_better'}}
+  alternatives          Json      // {locationId: {name: 'Paris', data: {}}}
+  
+  // Calculations
+  scores                Json?     // Calculated scores for each alternative
+  rankings              Json?     // Final rankings
+  sensitivity           Json?     // Sensitivity analysis results
+  
+  // Decision tracking
+  finalDecision         String?   @map("final_decision") // ID of chosen alternative
+  decisionReason        String?   @map("decision_reason") @db.Text
+  decisionDate          DateTime? @map("decision_date")
+  confidence            Decimal?  @db.Decimal(3,2)
+  
+  // Follow-up
+  actualOutcome         String?   @map("actual_outcome") @db.Text
+  satisfactionRating    Int?      @map("satisfaction_rating") @db.SmallInt
+  
+  // Metadata
+  isActive              Boolean   @default(true) @map("is_active")
+  isTemplate            Boolean   @default(false) @map("is_template")
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([matrixType])
+  @@index([isActive])
+  @@index([isTemplate])
+  @@map("decision_matrices")
+}
+
+// User behavioral patterns
+model UserBehaviorPattern {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  
+  // Pattern metadata
+  patternType           String    @map("pattern_type") // 'preference', 'decision', 'exploration', 'bias'
+  category              String    // 'cost', 'climate', 'culture', 'timing', 'duration'
+  
+  // Pattern data
+  pattern               Json      // The actual pattern data
+  frequency             Decimal   @db.Decimal(3,2) // How often this pattern occurs
+  confidence            Decimal   @db.Decimal(3,2) // Confidence in pattern detection
+  
+  // Pattern context
+  triggers              Json?     // What triggers this pattern
+  outcomes              Json?     // What outcomes result from this pattern
+  
+  // Pattern evolution
+  firstObserved         DateTime  @map("first_observed")
+  lastObserved          DateTime  @map("last_observed")
+  evolution             Json?     // How the pattern has changed over time
+  
+  // Pattern quality
+  dataPoints            Int       @map("data_points") // Number of observations
+  reliability           Decimal   @db.Decimal(3,2) // Pattern reliability score
+  
+  // Metadata
+  isActive              Boolean   @default(true) @map("is_active")
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([patternType])
+  @@index([category])
+  @@index([frequency])
+  @@index([lastObserved])
+  @@map("user_behavior_patterns")
+}
+
+// Predictive models and forecasts
+model PredictiveModel {
+  id                    String    @id @default(uuid())
+  userId                String?   @map("user_id") // null for global models
+  
+  // Model metadata
+  modelType             String    @map("model_type") // 'satisfaction', 'cost', 'climate', 'market'
+  targetVariable        String    @map("target_variable") // What we're predicting
+  
+  // Model performance
+  accuracy              Decimal   @db.Decimal(3,2) // Model accuracy score
+  precision             Decimal?  @db.Decimal(3,2)
+  recall                Decimal?  @db.Decimal(3,2)
+  f1Score               Decimal?  @map("f1_score") @db.Decimal(3,2)
+  
+  // Model configuration
+  features              Json      // Features used in the model
+  hyperparameters       Json      // Model hyperparameters
+  
+  // Training data
+  trainingDataSize      Int       @map("training_data_size")
+  trainingPeriod        Json      @map("training_period") // {start: date, end: date}
+  
+  // Model state
+  isActive              Boolean   @default(true) @map("is_active")
+  lastTrained           DateTime  @map("last_trained")
+  lastValidated         DateTime? @map("last_validated")
+  
+  // Predictions
+  predictions           Json?     // Recent predictions made by this model
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                  User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([modelType])
+  @@index([targetVariable])
+  @@index([isActive])
+  @@index([lastTrained])
+  @@map("predictive_models")
+}
+
+// Export history for tracking user exports
+model ExportHistory {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  
+  // Export metadata
+  format                String    // 'pdf', 'excel', 'csv', 'json'
+  sections              String[]  // Array of sections included
+  filename              String    // Generated filename
+  downloadUrl           String?   @map("download_url")
+  
+  // Export metrics
+  fileSize              Int       @map("file_size") // File size in bytes
+  duration              Int       // Generation duration in milliseconds
+  success               Boolean   @default(true)
+  
+  // Export options used
+  includeCharts         Boolean?  @map("include_charts")
+  includeRawData        Boolean?  @map("include_raw_data")
+  dateRange             Json?     @map("date_range") // {start: date, end: date}
+  locations             String[]? // Location IDs included
+  template              String?   // Template used
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([format])
+  @@index([createdAt])
+  @@index([success])
+  @@map("export_history")
+}
+
+// Scheduled exports for recurring reports
+model ExportSchedule {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  
+  // Schedule configuration
+  options               Json      // Export options to use
+  frequency             String    // 'daily', 'weekly', 'monthly'
+  nextRun               DateTime  @map("next_run")
+  
+  // Schedule state
+  isActive              Boolean   @default(true) @map("is_active")
+  lastRun               DateTime? @map("last_run")
+  lastSuccess           Boolean?  @map("last_success")
+  runCount              Int       @default(0) @map("run_count")
+  
+  // Error tracking
+  lastError             String?   @map("last_error")
+  consecutiveFailures   Int       @default(0) @map("consecutive_failures")
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([frequency])
+  @@index([nextRun])
+  @@index([isActive])
+  @@map("export_schedules")
+}
+
+// Analytics processing jobs for real-time system
+model AnalyticsProcessingJob {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  
+  // Job metadata
+  jobType               String    @map("job_type") // 'insight_generation', 'pattern_analysis', etc.
+  status                String    @default("pending") // 'pending', 'processing', 'completed', 'failed'
+  progress              Int       @default(0) // 0-100
+  
+  // Job data
+  data                  Json      // Input data for the job
+  result                Json?     // Job result
+  
+  // Timing
+  queuedAt              DateTime  @default(now()) @map("queued_at")
+  startedAt             DateTime? @map("started_at")
+  completedAt           DateTime? @map("completed_at")
+  
+  // Error handling
+  error                 String?   // Error message if failed
+  retryCount            Int       @default(0) @map("retry_count")
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([jobType])
+  @@index([status])
+  @@index([queuedAt])
+  @@index([startedAt])
+  @@map("analytics_processing_jobs")
 }

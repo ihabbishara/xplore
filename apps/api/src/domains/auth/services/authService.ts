@@ -2,7 +2,8 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { redis } from '@/lib/redis';
+import { redisWrapper } from '@/lib/redis-wrapper';
+import { Prisma } from '@prisma/client';
 import {
   AuthResponse,
   AuthTokens,
@@ -39,7 +40,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Create user and profile in transaction
-    const user = await prisma.$transaction(async (tx) => {
+    const user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newUser = await tx.user.create({
         data: {
           email,
@@ -253,7 +254,7 @@ export class AuthService {
     }
 
     // Clear any cached sessions
-    await redis.del(`session:${userId}`);
+    await redisWrapper.del(`session:${userId}`);
   }
 
   static async verifyAccessToken(token: string): Promise<JWTPayload> {

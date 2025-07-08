@@ -49,6 +49,7 @@ export interface CreateProfileRequest {
   interests?: UserInterests;
   privacySettings?: PrivacySettings;
   bio?: string;
+  avatarUrl?: string;
 }
 
 export interface UpdateProfileRequest extends Partial<CreateProfileRequest> {}

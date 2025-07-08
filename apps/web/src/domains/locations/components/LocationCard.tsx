@@ -25,8 +25,9 @@ export const LocationCard: React.FC<LocationCardProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   // Determine if this is a saved location or search result
-  const savedLocation = 'savedAt' in location ? location : null;
-  const locationData = savedLocation ? savedLocation.location : location;
+  const isSavedLocation = 'savedAt' in location;
+  const savedLocation = isSavedLocation ? location as SavedLocation : null;
+  const locationData = savedLocation ? savedLocation.location : location as LocationSearchResult;
 
   const handleToggleSave = async () => {
     setIsLoading(true);

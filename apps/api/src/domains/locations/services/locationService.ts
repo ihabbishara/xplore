@@ -1,6 +1,7 @@
 import axios from 'axios';
-import { redis } from '@/lib/redis';
+import { redisWrapper } from '@/lib/redis-wrapper';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { 
   LocationSearchResult, 
   LocationSearchRequest,
@@ -29,7 +30,7 @@ export class LocationService {
 
     // Check cache first
     const cacheKey = `location:search:${query}:${types.join(',')}:${limit}`;
-    const cached = await redis.get(cacheKey);
+    const cached = await redisWrapper.get(cacheKey);
     
     if (cached) {
       logger.debug(`Location search cache hit for: ${query}`);
@@ -54,18 +55,19 @@ export class LocationService {
         
         return {
           id: feature.id,
+          placeId: feature.id,
           name: feature.text,
           country: context.country || feature.text,
           city: context.place || context.locality,
-          state: context.region,
+          region: context.region,
+          address: feature.place_name,
           coordinates: { lat, lng },
           type: this.mapPlaceType(feature.place_type[0]),
-          fullAddress: feature.place_name,
         };
       });
 
       // Cache results
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(results));
+      await redisWrapper.setex(cacheKey, this.CACHE_TTL, JSON.stringify(results));
       
       logger.info(`Location search completed for: ${query}, found ${results.length} results`);
       return results;
@@ -81,7 +83,7 @@ export class LocationService {
     }
 
     const cacheKey = `location:reverse:${lat}:${lng}`;
-    const cached = await redis.get(cacheKey);
+    const cached = await redisWrapper.get(cacheKey);
     
     if (cached) {
       logger.debug(`Reverse geocode cache hit for: ${lat},${lng}`);
@@ -106,17 +108,18 @@ export class LocationService {
       
       const result: LocationSearchResult = {
         id: feature.id,
+        placeId: feature.id,
         name: feature.text,
         country: context.country || feature.text,
         city: context.place || context.locality,
-        state: context.region,
+        region: context.region,
+        address: feature.place_name,
         coordinates: { lat, lng },
         type: this.mapPlaceType(feature.place_type[0]),
-        fullAddress: feature.place_name,
       };
 
       // Cache result
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result));
+      await redisWrapper.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result));
       
       return result;
     } catch (error) {
@@ -207,7 +210,7 @@ export class LocationService {
             latitude: data.latitude,
             longitude: data.longitude,
             placeType: data.placeType,
-            metadata: data.metadata,
+            metadata: data.metadata || Prisma.JsonNull,
           },
         });
       }
@@ -359,7 +362,7 @@ export class LocationService {
       },
     });
 
-    return savedLocations.map((saved) => ({
+    return savedLocations.map((saved: any) => ({
       id: saved.locationId,
       coordinates: {
         lat: saved.location.latitude,

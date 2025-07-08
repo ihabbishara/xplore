@@ -6,6 +6,7 @@ import {
   updateSavedLocationSchema,
   savedLocationsQuerySchema,
   batchSaveLocationsSchema,
+  LocationType,
 } from '@xplore/shared';
 
 export class LocationController {
@@ -27,7 +28,7 @@ export class LocationController {
 
       const results = await LocationService.search({
         query,
-        types: typesArray,
+        types: typesArray as LocationType[] | undefined,
         limit: limitNumber,
       });
 

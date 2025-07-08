@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-export default function Home() {
+export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="z-10 max-w-5xl w-full items-center justify-between text-sm">
@@ -14,7 +14,7 @@ export default function Home() {
         <div className="flex gap-4 justify-center">
           <Link
             href="/auth/register"
-            className="rounded-lg bg-primary-500 px-6 py-3 text-white hover:bg-primary-600 transition-colors"
+            className="rounded-lg bg-blue-500 px-6 py-3 text-white hover:bg-blue-600 transition-colors"
           >
             Get Started
           </Link>

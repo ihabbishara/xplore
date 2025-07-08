@@ -1,9 +1,18 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { AuthResponse } from '@xplore/shared'
 
+interface FirebaseUser {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  avatarUrl: string | null
+  isAuthenticated: boolean
+}
+
 interface AuthState {
   isAuthenticated: boolean
-  user: AuthResponse['user'] | null
+  user: AuthResponse['user'] | FirebaseUser | null
   tokens: AuthResponse['tokens'] | null
   loading: boolean
   error: string | null
@@ -51,7 +60,20 @@ export const authSlice = createSlice({
         state.user = { ...state.user, ...action.payload }
       }
     },
+    setUser: (state, action: PayloadAction<FirebaseUser>) => {
+      state.isAuthenticated = true
+      state.user = action.payload
+      state.loading = false
+      state.error = null
+    },
+    clearUser: (state) => {
+      state.isAuthenticated = false
+      state.user = null
+      state.tokens = null
+      state.loading = false
+      state.error = null
+    },
   },
 })
 
-export const { loginStart, loginSuccess, loginFailure, logout, updateUser } = authSlice.actions
+export const { loginStart, loginSuccess, loginFailure, logout, updateUser, setUser, clearUser } = authSlice.actions
