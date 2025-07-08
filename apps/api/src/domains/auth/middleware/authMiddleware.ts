@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '@/domains/auth/services/authService';
+import { FirebaseAuthService } from '@/domains/auth/services/firebaseAuthService';
 import { AuthenticationError, AuthorizationError } from '@/shared/utils/errors';
 import { JWTPayload } from '@xplore/shared';
+import { logger } from '@/shared/utils/logger';
 
 // Extend Express Request type
 declare global {
@@ -30,11 +32,21 @@ export async function authenticate(
       throw new AuthenticationError('Invalid authorization header format');
     }
 
-    const payload = await AuthService.verifyAccessToken(token);
-    req.user = payload;
+    let payload: JWTPayload;
 
+    // Check if it's a Firebase token or JWT token
+    if (FirebaseAuthService.isFirebaseToken(token)) {
+      logger.info('Authenticating with Firebase token');
+      payload = await FirebaseAuthService.verifyFirebaseToken(token);
+    } else {
+      logger.info('Authenticating with JWT token');
+      payload = await AuthService.verifyAccessToken(token);
+    }
+
+    req.user = payload;
     next();
   } catch (error) {
+    logger.error('Authentication error:', error);
     next(error);
   }
 }
@@ -57,11 +69,11 @@ export function requireVerifiedEmail(
   next();
 }
 
-export function optionalAuth(
+export async function optionalAuth(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
@@ -69,5 +81,11 @@ export function optionalAuth(
     return;
   }
 
-  authenticate(req, res, next);
+  try {
+    await authenticate(req, res, next);
+  } catch (error) {
+    // For optional auth, don't fail if authentication fails
+    logger.warn('Optional authentication failed:', error);
+    next();
+  }
 }

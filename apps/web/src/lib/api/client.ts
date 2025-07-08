@@ -1,6 +1,5 @@
 import axios, { AxiosError } from 'axios'
-import { store } from '@/store'
-import { logout } from '@/domains/auth/store/authSlice'
+import { auth } from '@/lib/firebase/config'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
@@ -13,12 +12,18 @@ export const apiClient = axios.create({
 
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
-  (config) => {
-    const state = store.getState()
-    const token = state.auth.tokens?.accessToken
-
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+  async (config) => {
+    // Get Firebase ID token if user is authenticated
+    if (typeof window !== 'undefined' && auth.currentUser) {
+      try {
+        const token = await auth.currentUser.getIdToken()
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.warn('Failed to get Firebase ID token:', error)
+        // Continue without token if Firebase token retrieval fails
+      }
     }
 
     return config
@@ -34,11 +39,20 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     if (error.response?.status === 401) {
       // Token expired or invalid
-      store.dispatch(logout())
-      
-      // Redirect to login if not already there
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth')) {
-        window.location.href = '/auth/login'
+      if (typeof window !== 'undefined') {
+        try {
+          const { store } = require('@/store')
+          const { logout } = require('@/domains/auth/store/authSlice')
+          store.dispatch(logout())
+          
+          // Redirect to login if not already there
+          if (!window.location.pathname.includes('/auth')) {
+            window.location.href = '/auth/login'
+          }
+        } catch (storeError) {
+          // Store not available, just redirect
+          window.location.href = '/auth/login'
+        }
       }
     }
 
