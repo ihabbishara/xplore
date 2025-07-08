@@ -24,6 +24,7 @@ model User {
   // Relations
   profile        UserProfile?
   refreshTokens  RefreshToken[]
+  savedLocations UserSavedLocation[]
 
   @@map("users")
 }
@@ -88,4 +89,49 @@ model PasswordResetToken {
 
   @@index([email])
   @@map("password_reset_tokens")
+}
+
+// Locations master table (normalized location data)
+model Location {
+  id         String   @id @default(uuid())
+  placeId    String   @unique @map("place_id") // Mapbox/Google Places ID
+  name       String
+  address    String?
+  country    String?  @db.VarChar(100)
+  region     String?  @db.VarChar(100)
+  city       String?  @db.VarChar(100)
+  latitude   Float
+  longitude  Float
+  placeType  String?  @map("place_type") @db.VarChar(50) // 'city', 'region', 'poi', 'address'
+  metadata   Json?    // Additional place data from APIs
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  savedByUsers UserSavedLocation[]
+
+  @@index([country, city])
+  @@index([latitude, longitude])
+  @@map("locations")
+}
+
+// User saved locations (wishlist)
+model UserSavedLocation {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  locationId    String   @map("location_id")
+  personalNotes String?  @map("personal_notes") @db.Text
+  customTags    String[] @map("custom_tags")
+  rating        Int?     @db.SmallInt
+  isFavorite    Boolean  @default(false) @map("is_favorite")
+  savedAt       DateTime @default(now()) @map("saved_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, locationId])
+  @@index([userId])
+  @@index([customTags])
+  @@map("user_saved_locations")
 }

@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@xplore/shared', '@xplore/ui'],
+  transpilePackages: ['@xplore/shared'],
   images: {
     domains: ['localhost', 'xplore.app'],
   },

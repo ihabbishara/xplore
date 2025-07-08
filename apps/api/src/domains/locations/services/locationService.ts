@@ -1,8 +1,19 @@
 import axios from 'axios';
 import { redis } from '@/lib/redis';
-import { LocationSearchResult, LocationSearchRequest } from '@xplore/shared';
+import { prisma } from '@/lib/prisma';
+import { 
+  LocationSearchResult, 
+  LocationSearchRequest,
+  SaveLocationRequest,
+  UpdateSavedLocationRequest,
+  SavedLocationsQuery,
+  SavedLocation,
+  LocationType,
+  BatchSaveLocationsRequest,
+  MapViewLocation
+} from '@xplore/shared';
 import { logger } from '@/shared/utils/logger';
-import { AppError } from '@/shared/utils/errors';
+import { AppError, NotFoundError, ValidationError } from '@/shared/utils/errors';
 
 export class LocationService {
   private static MAPBOX_API_URL = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
@@ -132,15 +143,21 @@ export class LocationService {
     return result;
   }
 
-  private static mapPlaceType(mapboxType: string): 'country' | 'city' | 'place' {
+  private static mapPlaceType(mapboxType: string): LocationType {
     switch (mapboxType) {
       case 'country':
         return 'country';
       case 'place':
       case 'locality':
         return 'city';
+      case 'region':
+        return 'region';
+      case 'poi':
+        return 'poi';
+      case 'address':
+        return 'address';
       default:
-        return 'place';
+        return 'poi';
     }
   }
 
@@ -167,5 +184,237 @@ export class LocationService {
     }
 
     return results;
+  }
+
+  // Wishlist Management Methods
+
+  static async saveLocation(userId: string, data: SaveLocationRequest): Promise<SavedLocation> {
+    try {
+      // First, find or create the location
+      let location = await prisma.location.findUnique({
+        where: { placeId: data.placeId },
+      });
+
+      if (!location) {
+        location = await prisma.location.create({
+          data: {
+            placeId: data.placeId,
+            name: data.name,
+            country: data.country,
+            city: data.city,
+            region: data.region,
+            address: data.address,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            placeType: data.placeType,
+            metadata: data.metadata,
+          },
+        });
+      }
+
+      // Check if already saved
+      const existingSave = await prisma.userSavedLocation.findUnique({
+        where: {
+          userId_locationId: {
+            userId,
+            locationId: location.id,
+          },
+        },
+      });
+
+      if (existingSave) {
+        throw new ValidationError('Location already saved to wishlist');
+      }
+
+      // Create saved location
+      const savedLocation = await prisma.userSavedLocation.create({
+        data: {
+          userId,
+          locationId: location.id,
+          personalNotes: data.personalNotes,
+          customTags: data.customTags || [],
+          rating: data.rating,
+        },
+        include: {
+          location: true,
+        },
+      });
+
+      return this.formatSavedLocation(savedLocation);
+    } catch (error) {
+      logger.error('Error saving location:', error);
+      throw error;
+    }
+  }
+
+  static async removeLocation(userId: string, locationId: string): Promise<void> {
+    const deleted = await prisma.userSavedLocation.deleteMany({
+      where: {
+        userId,
+        locationId,
+      },
+    });
+
+    if (deleted.count === 0) {
+      throw new NotFoundError('Saved location not found');
+    }
+  }
+
+  static async updateSavedLocation(
+    userId: string,
+    locationId: string,
+    data: UpdateSavedLocationRequest
+  ): Promise<SavedLocation> {
+    const savedLocation = await prisma.userSavedLocation.update({
+      where: {
+        userId_locationId: {
+          userId,
+          locationId,
+        },
+      },
+      data: {
+        personalNotes: data.personalNotes,
+        customTags: data.customTags,
+        rating: data.rating,
+        isFavorite: data.isFavorite,
+      },
+      include: {
+        location: true,
+      },
+    });
+
+    return this.formatSavedLocation(savedLocation);
+  }
+
+  static async getSavedLocations(
+    userId: string,
+    query: SavedLocationsQuery
+  ): Promise<{ locations: SavedLocation[]; total: number }> {
+    const {
+      tags,
+      minRating,
+      favorites,
+      sortBy = 'savedAt',
+      sortOrder = 'desc',
+      page = 1,
+      limit = 20,
+    } = query;
+
+    // Build where clause
+    const where: any = { userId };
+
+    if (tags && tags.length > 0) {
+      where.customTags = { hasSome: tags };
+    }
+
+    if (minRating) {
+      where.rating = { gte: minRating };
+    }
+
+    if (favorites !== undefined) {
+      where.isFavorite = favorites;
+    }
+
+    // Get total count
+    const total = await prisma.userSavedLocation.count({ where });
+
+    // Build order by
+    const orderBy: any = {};
+    switch (sortBy) {
+      case 'savedAt':
+        orderBy.savedAt = sortOrder;
+        break;
+      case 'rating':
+        orderBy.rating = sortOrder;
+        break;
+      case 'name':
+        orderBy.location = { name: sortOrder };
+        break;
+      default:
+        orderBy.savedAt = sortOrder;
+    }
+
+    // Get saved locations
+    const savedLocations = await prisma.userSavedLocation.findMany({
+      where,
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        location: true,
+      },
+    });
+
+    return {
+      locations: savedLocations.map(this.formatSavedLocation),
+      total,
+    };
+  }
+
+  static async getMapViewLocations(userId: string): Promise<MapViewLocation[]> {
+    const savedLocations = await prisma.userSavedLocation.findMany({
+      where: { userId },
+      include: {
+        location: true,
+      },
+    });
+
+    return savedLocations.map((saved) => ({
+      id: saved.locationId,
+      coordinates: {
+        lat: saved.location.latitude,
+        lng: saved.location.longitude,
+      },
+      name: saved.location.name,
+      type: (saved.location.placeType as LocationType) || 'poi',
+      isFavorite: saved.isFavorite,
+      rating: saved.rating || undefined,
+    }));
+  }
+
+  static async batchSaveLocations(
+    userId: string,
+    data: BatchSaveLocationsRequest
+  ): Promise<SavedLocation[]> {
+    const results: SavedLocation[] = [];
+
+    for (const locationData of data.locations) {
+      try {
+        const saved = await this.saveLocation(userId, locationData);
+        results.push(saved);
+      } catch (error) {
+        logger.error(`Failed to save location ${locationData.name}:`, error);
+        // Continue with other locations
+      }
+    }
+
+    return results;
+  }
+
+  private static formatSavedLocation(saved: any): SavedLocation {
+    return {
+      id: saved.id,
+      location: {
+        id: saved.location.id,
+        placeId: saved.location.placeId,
+        name: saved.location.name,
+        country: saved.location.country || '',
+        city: saved.location.city,
+        region: saved.location.region,
+        address: saved.location.address,
+        coordinates: {
+          lat: saved.location.latitude,
+          lng: saved.location.longitude,
+        },
+        type: (saved.location.placeType as LocationType) || 'poi',
+        metadata: saved.location.metadata,
+      },
+      personalNotes: saved.personalNotes,
+      customTags: saved.customTags,
+      rating: saved.rating,
+      isFavorite: saved.isFavorite,
+      savedAt: saved.savedAt.toISOString(),
+      updatedAt: saved.updatedAt.toISOString(),
+    };
   }
 }

@@ -7,6 +7,7 @@ export * from './types/common.types';
 // Validations
 export * from './validations/auth.validation';
 export * from './validations/user.validation';
+export * from './validations/location.validation';
 
 // Constants
 export * from './constants/auth.constants';

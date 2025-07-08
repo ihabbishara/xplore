@@ -1,6 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { LocationService } from '@/domains/locations/services/locationService';
 import { ValidationError } from '@/shared/utils/errors';
+import {
+  saveLocationSchema,
+  updateSavedLocationSchema,
+  savedLocationsQuerySchema,
+  batchSaveLocationsSchema,
+} from '@xplore/shared';
 
 export class LocationController {
   static async search(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -76,6 +82,152 @@ export class LocationController {
 
       res.json({
         data: destinations,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Wishlist endpoints
+
+  static async saveLocation(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const validatedData = saveLocationSchema.parse(req.body);
+
+      const savedLocation = await LocationService.saveLocation(userId, validatedData);
+
+      res.status(201).json({
+        data: savedLocation,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async removeLocation(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const { locationId } = req.params;
+
+      await LocationService.removeLocation(userId, locationId);
+
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getSavedLocations(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const query = savedLocationsQuerySchema.parse(req.query);
+
+      const result = await LocationService.getSavedLocations(userId, query);
+
+      res.json({
+        data: result.locations,
+        meta: {
+          total: result.total,
+          page: query.page || 1,
+          limit: query.limit || 20,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateSavedLocation(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const { locationId } = req.params;
+      const validatedData = updateSavedLocationSchema.parse(req.body);
+
+      const updatedLocation = await LocationService.updateSavedLocation(
+        userId,
+        locationId,
+        validatedData
+      );
+
+      res.json({
+        data: updatedLocation,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateNotes(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const { locationId } = req.params;
+      const { notes } = req.body;
+
+      if (typeof notes !== 'string') {
+        throw new ValidationError('Notes must be a string');
+      }
+
+      const updatedLocation = await LocationService.updateSavedLocation(userId, locationId, {
+        personalNotes: notes,
+      });
+
+      res.json({
+        data: updatedLocation,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateTags(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const { locationId } = req.params;
+      const { tags } = req.body;
+
+      if (!Array.isArray(tags)) {
+        throw new ValidationError('Tags must be an array');
+      }
+
+      const updatedLocation = await LocationService.updateSavedLocation(userId, locationId, {
+        customTags: tags,
+      });
+
+      res.json({
+        data: updatedLocation,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getMapViewLocations(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const locations = await LocationService.getMapViewLocations(userId);
+
+      res.json({
+        data: locations,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async batchSaveLocations(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const validatedData = batchSaveLocationsSchema.parse(req.body);
+
+      const savedLocations = await LocationService.batchSaveLocations(userId, validatedData);
+
+      res.status(201).json({
+        data: savedLocations,
+        meta: {
+          total: savedLocations.length,
+          succeeded: savedLocations.length,
+        },
       });
     } catch (error) {
       next(error);
