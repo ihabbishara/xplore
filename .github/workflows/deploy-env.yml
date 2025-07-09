@@ -1,0 +1,118 @@
+name: Deploy Environment
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+
+jobs:
+  deploy-api:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8.15.0
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Build API
+        run: pnpm build --filter=api
+      
+      - name: Build Docker image
+        run: |
+          cd apps/api
+          docker build -t xplore-api:${{ github.sha }} -f Dockerfile.prod .
+      
+      - name: Deploy to Cloud Run (Staging)
+        if: inputs.environment == 'staging'
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" | base64 -d > gcp-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/gcp-key.json"
+          
+          gcloud auth activate-service-account --key-file=gcp-key.json
+          gcloud config set project $GOOGLE_CLOUD_PROJECT
+          
+          gcloud run deploy xplore-api-staging \
+            --image gcr.io/$GOOGLE_CLOUD_PROJECT/xplore-api:${{ github.sha }} \
+            --platform managed \
+            --region us-central1 \
+            --allow-unauthenticated \
+            --set-env-vars NODE_ENV=staging \
+            --set-secrets DATABASE_URL=database-url-staging:latest \
+            --set-secrets REDIS_URL=redis-url-staging:latest
+      
+      - name: Deploy to Cloud Run (Production)
+        if: inputs.environment == 'production'
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" | base64 -d > gcp-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/gcp-key.json"
+          
+          gcloud auth activate-service-account --key-file=gcp-key.json
+          gcloud config set project $GOOGLE_CLOUD_PROJECT
+          
+          gcloud run deploy xplore-api \
+            --image gcr.io/$GOOGLE_CLOUD_PROJECT/xplore-api:${{ github.sha }} \
+            --platform managed \
+            --region us-central1 \
+            --allow-unauthenticated \
+            --set-env-vars NODE_ENV=production \
+            --set-secrets DATABASE_URL=database-url:latest \
+            --set-secrets REDIS_URL=redis-url:latest
+
+  deploy-web:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8.15.0
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Build Web App
+        env:
+          NEXT_PUBLIC_API_URL: ${{ inputs.environment == 'production' && secrets.PRODUCTION_API_URL || secrets.STAGING_API_URL }}
+          NEXT_PUBLIC_MAPBOX_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
+        run: pnpm build --filter=web
+      
+      - name: Deploy to Vercel (Staging)
+        if: inputs.environment == 'staging'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
+          npx vercel build --token=$VERCEL_TOKEN
+          npx vercel deploy --prebuilt --token=$VERCEL_TOKEN --env=preview
+      
+      - name: Deploy to Vercel (Production)
+        if: inputs.environment == 'production'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+          npx vercel build --prod --token=$VERCEL_TOKEN
+          npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN

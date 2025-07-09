@@ -1,29 +1,17 @@
-import { prisma } from '@/lib/prisma';
+// Test setup file
 
-// Mock Redis for tests
-jest.mock('@/lib/redis', () => ({
-  redis: {
-    get: jest.fn(),
-    set: jest.fn(),
-    setex: jest.fn(),
-    del: jest.fn(),
-    connect: jest.fn(),
-    disconnect: jest.fn(),
+// Mock environment variables
+process.env.NODE_ENV = 'test'
+process.env.JWT_SECRET = 'test-jwt-secret'
+process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret'
+process.env.FRONTEND_URL = 'http://localhost:3000'
+
+// Mock logger to avoid console output during tests
+jest.mock('@/shared/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
   },
-}));
-
-// Clean up database before each test
-beforeEach(async () => {
-  await prisma.$transaction([
-    prisma.emailVerificationToken.deleteMany(),
-    prisma.passwordResetToken.deleteMany(),
-    prisma.refreshToken.deleteMany(),
-    prisma.userProfile.deleteMany(),
-    prisma.user.deleteMany(),
-  ]);
-});
-
-// Disconnect from database after all tests
-afterAll(async () => {
-  await prisma.$disconnect();
-});
+}))

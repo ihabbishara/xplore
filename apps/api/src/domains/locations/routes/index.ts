@@ -2,6 +2,14 @@ import { Router } from 'express';
 import { LocationController } from '@/domains/locations/controllers/locationController';
 import { authenticate } from '@/domains/auth/middleware/authMiddleware';
 import { createRateLimiter } from '@/shared/middleware/rateLimiter';
+import { validate } from '@/middleware/validation';
+import {
+  searchValidation,
+  saveLocationValidation,
+  locationIdValidation,
+  updateLocationValidation,
+  coordinatesValidation
+} from '../validations/location.validation';
 
 const router = Router();
 
@@ -20,20 +28,20 @@ const wishlistLimiter = createRateLimiter({
 });
 
 // Public routes (but with rate limiting)
-router.get('/search', searchLimiter, LocationController.search);
-router.get('/reverse', searchLimiter, LocationController.reverseGeocode);
+router.get('/search', searchLimiter, validate(searchValidation), LocationController.search);
+router.get('/reverse', searchLimiter, validate(coordinatesValidation), LocationController.reverseGeocode);
 router.get('/popular', LocationController.getPopularDestinations);
 
 // Protected routes - Wishlist management
 router.use(authenticate); // All routes below require authentication
 
 // Wishlist endpoints
-router.post('/save', wishlistLimiter, LocationController.saveLocation);
-router.delete('/saved/:locationId', wishlistLimiter, LocationController.removeLocation);
+router.post('/save', wishlistLimiter, validate(saveLocationValidation), LocationController.saveLocation);
+router.delete('/saved/:locationId', wishlistLimiter, validate(locationIdValidation), LocationController.removeLocation);
 router.get('/saved', LocationController.getSavedLocations);
-router.put('/saved/:locationId', wishlistLimiter, LocationController.updateSavedLocation);
-router.put('/saved/:locationId/notes', wishlistLimiter, LocationController.updateNotes);
-router.put('/saved/:locationId/tags', wishlistLimiter, LocationController.updateTags);
+router.put('/saved/:locationId', wishlistLimiter, validate(locationIdValidation), validate(updateLocationValidation), LocationController.updateSavedLocation);
+router.put('/saved/:locationId/notes', wishlistLimiter, validate(locationIdValidation), LocationController.updateNotes);
+router.put('/saved/:locationId/tags', wishlistLimiter, validate(locationIdValidation), LocationController.updateTags);
 router.get('/saved/map-view', LocationController.getMapViewLocations);
 router.post('/batch-save', wishlistLimiter, LocationController.batchSaveLocations);
 

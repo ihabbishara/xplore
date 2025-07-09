@@ -15,6 +15,11 @@
     "test": {
       "dependsOn": ["^build"]
     },
+    "test:ci": {
+      "dependsOn": ["^build"],
+      "env": ["NODE_ENV", "DATABASE_URL", "REDIS_URL"],
+      "outputs": ["coverage/**"]
+    },
     "clean": {
       "cache": false
     }

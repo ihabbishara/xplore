@@ -1,0 +1,27 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: false,
+  swcMinify: true,
+  experimental: {
+    forceSwcTransforms: true,
+  },
+  webpack: (config, { isServer }) => {
+    // Ignore problematic modules that might cause circular dependencies
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': require('path').join(__dirname, 'src'),
+    };
+    
+    // Ensure proper module resolution
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+      os: false,
+    };
+    
+    return config;
+  },
+}
+
+module.exports = nextConfig

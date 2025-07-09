@@ -1,7 +1,7 @@
 'use client'
 
 import { Provider } from 'react-redux'
-import { store } from '@/store/store'
+import { store } from '@/store'
 import { AuthProvider } from '@/lib/firebase/AuthContext'
 
 export function Providers({ children }: { children: React.ReactNode }) {

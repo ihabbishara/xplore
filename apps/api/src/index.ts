@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import compression from 'compression';
 import { createServer } from 'http';
@@ -9,46 +8,58 @@ import { Server } from 'socket.io';
 
 import { errorHandler } from '@/shared/middleware/errorHandler';
 import { notFoundHandler } from '@/shared/middleware/notFoundHandler';
+import { setupSecurityMiddleware } from '@/middleware/security';
 import { setupRoutes } from '@/routes';
 import { logger } from '@/shared/utils/logger';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
+import { getSecurityConfig } from '@/config/security';
 
 const app = express();
 const httpServer = createServer(app);
+const config = getSecurityConfig();
+
 const io = new Server(httpServer, {
-  cors: {
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3002',
-      'http://localhost:3003',
-      process.env.FRONTEND_URL || 'http://localhost:3000'
-    ],
-    credentials: true,
-  },
+  cors: config.cors,
 });
 
-// Middleware
-app.use(helmet());
-app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-    'http://localhost:3003',
-    process.env.FRONTEND_URL || 'http://localhost:3000'
-  ],
-  credentials: true,
-}));
+// Cookie parser (needed for CSRF)
+app.use(cookieParser());
+
+// Security middleware (must be early)
+setupSecurityMiddleware(app);
+
+// Body parsing middleware (after security)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Other middleware
 app.use(compression());
 app.use(morgan('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Database health check
+app.get('/health/db', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(503).json({ status: 'error', error: 'Database connection failed' });
+  }
+});
+
+// Redis health check
+app.get('/health/redis', async (req, res) => {
+  try {
+    await redis.ping();
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(503).json({ status: 'error', error: 'Redis connection failed' });
+  }
 });
 
 // Routes

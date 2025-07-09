@@ -29,10 +29,13 @@ model User {
   collaboratingTrips TripCollaborator[]
   invitedCollaborators TripCollaborator[] @relation("InvitedCollaborators")
   journalEntries JournalEntry[]
+  checklistTemplates ChecklistTemplate[]
   checklists     Checklist[]
   assignedChecklistItems ChecklistItem[] @relation("AssignedChecklistItems")
   completedChecklistItems ChecklistItem[] @relation("CompletedChecklistItems")
   checklistCollaborations ChecklistCollaborator[]
+  checklistInvites ChecklistCollaborator[] @relation("ChecklistInviters")
+  checklistActivities ChecklistActivity[]
   savedProperties UserSavedProperty[]
   locationAnalytics LocationAnalytics[]
   explorationInsights ExplorationInsight[]
@@ -398,30 +401,64 @@ model VoiceTranscription {
   @@map("voice_transcriptions")
 }
 
+// Checklist templates
+model ChecklistTemplate {
+  id              String    @id @default(uuid())
+  name            String
+  description     String?   @db.Text
+  category        String    // 'travel', 'relocation', 'adventure', 'business', 'weekend', etc.
+  icon            String?   @db.VarChar(50)
+  isSystem        Boolean   @default(false) @map("is_system") // System-provided templates
+  isPublic        Boolean   @default(true) @map("is_public")
+  tags            String[]  // ['summer', 'winter', 'beach', 'mountain', etc.]
+  defaultItems    Json      @map("default_items") // Array of default checklist items
+  createdBy       String?   @map("created_by")
+  usageCount      Int       @default(0) @map("usage_count")
+  rating          Decimal?  @db.Decimal(3,2) // Average user rating
+  metadata        Json?     // Additional template settings
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  creator         User?     @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  checklists      Checklist[]
+  
+  @@index([category])
+  @@index([tags])
+  @@index([isSystem])
+  @@index([isPublic])
+  @@index([rating])
+  @@map("checklist_templates")
+}
+
 // Checklists
 model Checklist {
-  id            String    @id @default(uuid())
-  name          String
-  description   String?
-  userId        String    @map("user_id")
-  tripId        String?   @map("trip_id")
-  templateId    String?   @map("template_id")
-  category      String?   // 'packing', 'documents', 'pre-trip', 'activities', etc.
-  isTemplate    Boolean   @default(false) @map("is_template")
-  isPublic      Boolean   @default(false) @map("is_public")
-  metadata      Json?     // { icon, color, auto_suggestions_enabled, etc. }
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id                String    @id @default(uuid())
+  name              String
+  description       String?
+  userId            String    @map("user_id")
+  tripId            String?   @map("trip_id")
+  templateId        String?   @map("template_id")
+  dueDate           DateTime? @map("due_date")
+  isCollaborative   Boolean   @default(false) @map("is_collaborative")
+  visibility        String    @default("private") // 'private', 'shared', 'public'
+  progress          Int       @default(0) // 0-100 percentage
+  metadata          Json?     // { icon, color, auto_suggestions_enabled, weather_aware, etc. }
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   // Relations
   user              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   trip              Trip?                   @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  template          ChecklistTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
   items             ChecklistItem[]
   collaborators     ChecklistCollaborator[]
+  activities        ChecklistActivity[]
 
   @@index([userId])
   @@index([tripId])
-  @@index([category])
+  @@index([templateId])
+  @@index([visibility])
   @@map("checklists")
 }
 
@@ -429,16 +466,19 @@ model Checklist {
 model ChecklistItem {
   id            String    @id @default(uuid())
   checklistId   String    @map("checklist_id")
-  content       String
+  name          String    @db.VarChar(255)
+  description   String?   @db.Text
+  category      String?   @db.VarChar(100) // 'documents', 'clothing', 'electronics', etc.
+  priority      Int       @default(0) // 0 = low, 1 = medium, 2 = high
   isCompleted   Boolean   @default(false) @map("is_completed")
   completedAt   DateTime? @map("completed_at")
   completedBy   String?   @map("completed_by")
-  priority      String?   // 'high', 'medium', 'low'
-  dueDate       DateTime? @map("due_date")
   assignedTo    String?   @map("assigned_to")
-  notes         String?
-  orderIndex    Int       @map("order_index") @default(0)
-  metadata      Json?     // { quantity, category, weather_dependent, etc. }
+  dueDate       DateTime? @map("due_date")
+  notes         String?   @db.Text
+  attachments   Json?     // Array of file URLs or references
+  position      Int       // Position in the list
+  metadata      Json?     // { quantity, weather_dependent, location_specific, etc. }
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -447,8 +487,10 @@ model ChecklistItem {
   assignee      User?     @relation("AssignedChecklistItems", fields: [assignedTo], references: [id], onDelete: SetNull)
   completedUser User?     @relation("CompletedChecklistItems", fields: [completedBy], references: [id], onDelete: SetNull)
 
-  @@index([checklistId, orderIndex])
+  @@index([checklistId, position])
   @@index([assignedTo])
+  @@index([category])
+  @@index([priority])
   @@map("checklist_items")
 }
 
@@ -457,16 +499,43 @@ model ChecklistCollaborator {
   id          String    @id @default(uuid())
   checklistId String    @map("checklist_id")
   userId      String    @map("user_id")
-  permissions Json      // { can_edit, can_complete, can_assign, etc. }
-  createdAt   DateTime  @default(now()) @map("created_at")
+  role        String    @default("viewer") @db.VarChar(50) // 'owner', 'editor', 'viewer'
+  canEdit     Boolean   @default(false) @map("can_edit")
+  canComplete Boolean   @default(true) @map("can_complete")
+  canAssign   Boolean   @default(false) @map("can_assign")
+  invitedBy   String?   @map("invited_by")
+  joinedAt    DateTime  @default(now()) @map("joined_at")
 
   // Relations
   checklist Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inviter   User?     @relation("ChecklistInviters", fields: [invitedBy], references: [id], onDelete: SetNull)
 
   @@unique([checklistId, userId])
   @@index([userId])
+  @@index([role])
   @@map("checklist_collaborators")
+}
+
+// Checklist activity log
+model ChecklistActivity {
+  id          String    @id @default(uuid())
+  checklistId String    @map("checklist_id")
+  userId      String    @map("user_id")
+  itemId      String?   @map("item_id") // Null for checklist-level activities
+  action      String    @db.VarChar(50) // 'created', 'updated', 'completed', 'assigned', etc.
+  details     Json?     // Additional activity details
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("checklist_activities")
 }
 
 // Properties (real estate listings)
@@ -949,7 +1018,7 @@ model ExportHistory {
   includeCharts         Boolean?  @map("include_charts")
   includeRawData        Boolean?  @map("include_raw_data")
   dateRange             Json?     @map("date_range") // {start: date, end: date}
-  locations             String[]? // Location IDs included
+  locations             String[] // Location IDs included
   template              String?   // Template used
   
   createdAt             DateTime  @default(now()) @map("created_at")

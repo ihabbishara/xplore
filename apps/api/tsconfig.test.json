@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist-test",
+    "rootDir": ".",
+    "allowJs": true,
+    "noEmit": true
+  },
+  "include": [
+    "src/**/*",
+    "jest.config.js"
+  ],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

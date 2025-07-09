@@ -1,0 +1,58 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+build
+.next
+**/.next
+*.tsbuildinfo
+
+# Development files
+.git
+.github
+.vscode
+.idea
+*.log
+*.md
+.env*
+!.env.example
+
+# Test files
+coverage
+.nyc_output
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+cypress
+jest.config.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# Documentation
+docs
+README.md
+CONTRIBUTING.md
+LICENSE
+
+# Scripts (except necessary ones)
+scripts/*.sh
+!scripts/docker-entrypoint.sh
+
+# Misc
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+.gitignore
+.eslintrc*
+.prettierrc*

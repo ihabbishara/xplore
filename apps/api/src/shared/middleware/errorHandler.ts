@@ -24,11 +24,14 @@ export function errorHandler(
 
   // Handle known errors
   if (error instanceof AppError) {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     res.status(error.statusCode).json({
       error: {
         message: error.message,
         code: error.code,
-        ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
+        // Never expose stack traces in production
+        ...(isProduction ? {} : { stack: error.stack }),
       },
     });
     return;
@@ -61,13 +64,16 @@ export function errorHandler(
   }
 
   // Default error response
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   res.status(500).json({
     error: {
-      message: process.env.NODE_ENV === 'production' 
+      message: isProduction 
         ? 'Internal server error' 
         : error.message,
       code: 'INTERNAL_ERROR',
-      ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
+      // Never expose stack traces in production
+      ...(isProduction ? {} : { stack: error.stack }),
     },
   });
 }

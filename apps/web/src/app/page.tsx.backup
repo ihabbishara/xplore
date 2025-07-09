@@ -1,0 +1,31 @@
+import Link from 'next/link'
+
+export default function Home() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+      <div className="z-10 max-w-5xl w-full items-center justify-between text-sm">
+        <h1 className="text-5xl font-bold text-center mb-8">
+          Welcome to Xplore
+        </h1>
+        <p className="text-xl text-center text-gray-600 mb-12">
+          Your comprehensive exploration companion for travelers, adventurers, and relocators
+        </p>
+        
+        <div className="flex gap-4 justify-center">
+          <Link
+            href="/auth/register"
+            className="rounded-lg bg-primary-500 px-6 py-3 text-white hover:bg-primary-600 transition-colors"
+          >
+            Get Started
+          </Link>
+          <Link
+            href="/auth/login"
+            className="rounded-lg border border-gray-300 px-6 py-3 hover:border-gray-400 transition-colors"
+          >
+            Sign In
+          </Link>
+        </div>
+      </div>
+    </main>
+  )
+}

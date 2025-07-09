@@ -1,0 +1,28 @@
+name: Deploy
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: staging
+    secrets: inherit
+
+  deploy-production:
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: production
+    secrets: inherit

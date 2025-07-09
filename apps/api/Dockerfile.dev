@@ -1,0 +1,33 @@
+# Development Dockerfile
+FROM node:18-alpine
+
+# Install pnpm
+RUN npm install -g pnpm@8.15.0
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/database/package.json ./packages/database/
+
+# Install dependencies
+RUN pnpm install
+
+# Copy source code
+COPY . .
+
+# Generate Prisma client
+RUN cd apps/api && npx prisma generate
+
+# Expose port
+EXPOSE 3001
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV PORT=3001
+
+# Start the application in development mode
+CMD ["pnpm", "dev", "--filter=api"]

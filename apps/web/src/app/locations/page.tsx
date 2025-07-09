@@ -10,9 +10,8 @@ import { LocationSearchResult } from '@xplore/shared';
 
 export default function LocationsPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const { savedLocations, savedLocationsLoading, popularDestinations } = useSelector(
-    (state: RootState) => state.locations
-  );
+  const locationsState = useSelector((state: RootState) => state.locations);
+  const { savedLocations = [], savedLocationsLoading = false, popularDestinations = [] } = locationsState || {};
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   
   const [selectedLocation, setSelectedLocation] = useState<LocationSearchResult | null>(null);
