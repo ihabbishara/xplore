@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:24-alpine AS builder
 
 # Install pnpm
 RUN npm install -g pnpm@8.15.0
@@ -28,7 +28,7 @@ ARG NEXT_PUBLIC_GOOGLE_PLACES_API_KEY
 RUN pnpm build --filter=web
 
 # Production stage
-FROM node:18-alpine AS runner
+FROM node:24-alpine AS runner
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
