@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { redisWrapper } from '@/lib/redis-wrapper';
 import { prisma, cache, cacheConfigs, Cacheable, InvalidateCache } from '@/lib/prisma';
-import { locationQueries, batchLoaders } from '@/lib/database/optimizations';
+// import { locationQueries, batchLoaders } from '@/lib/database/optimizations';
 import { Prisma } from '@prisma/client';
 import { 
   LocationSearchResult, 
@@ -30,20 +30,20 @@ export class LocationService {
     }
 
     // First, try database search with full-text search
-    const dbResults = await locationQueries.searchLocations(query, limit);
-    if (dbResults.length >= limit) {
-      return dbResults.map(loc => ({
-        id: loc.id,
-        placeId: loc.id,
-        name: loc.name,
-        country: loc.country || '',
-        city: loc.city,
-        region: '',
-        address: `${loc.city || ''}, ${loc.country || ''}`,
-        coordinates: { lat: loc.latitude, lng: loc.longitude },
-        type: 'city' as LocationType,
-      }));
-    }
+    // const dbResults = await locationQueries.searchLocations(query, limit);
+    // if (dbResults.length >= limit) {
+    //   return dbResults.map((loc: any) => ({
+    //     id: loc.id,
+    //     placeId: loc.id,
+    //     name: loc.name,
+    //     country: loc.country || '',
+    //     city: loc.city,
+    //     region: '',
+    //     address: `${loc.city || ''}, ${loc.country || ''}`,
+    //     coordinates: { lat: loc.latitude, lng: loc.longitude },
+    //     type: 'city' as LocationType,
+    //   }));
+    // }
 
     // Use optimized cache
     const cacheKey = cache.generateKey('location:search', { query, types, limit });
@@ -100,21 +100,21 @@ export class LocationService {
     }
 
     // Try finding nearby location in database first
-    const nearbyLocations = await locationQueries.getNearbyLocations(lat, lng, 1, 1);
-    if (nearbyLocations.length > 0 && nearbyLocations[0].distance_km < 0.1) {
-      const loc = nearbyLocations[0];
-      return {
-        id: loc.id,
-        placeId: loc.id,
-        name: loc.name,
-        country: loc.country || '',
-        city: loc.city,
-        region: '',
-        address: `${loc.city || ''}, ${loc.country || ''}`,
-        coordinates: { lat: loc.latitude, lng: loc.longitude },
-        type: 'city' as LocationType,
-      };
-    }
+    // const nearbyLocations = await locationQueries.getNearbyLocations(lat, lng, 1, 1);
+    // if (nearbyLocations.length > 0 && nearbyLocations[0].distance_km < 0.1) {
+    //   const loc = nearbyLocations[0];
+    //   return {
+    //     id: loc.id,
+    //     placeId: loc.id,
+    //     name: loc.name,
+    //     country: loc.country || '',
+    //     city: loc.city,
+    //     region: '',
+    //     address: `${loc.city || ''}, ${loc.country || ''}`,
+    //     coordinates: { lat: loc.latitude, lng: loc.longitude },
+    //     type: 'city' as LocationType,
+    //   };
+    // }
 
     const cacheKey = cache.generateKey('location:reverse', { lat, lng });
     const cached = await cache.get<LocationSearchResult>(cacheKey);
@@ -198,7 +198,7 @@ export class LocationService {
     }
   }
 
-  @Cacheable(cacheConfigs.long)
+  // @Cacheable(cacheConfigs.long)
   static async getPopularDestinations(): Promise<LocationSearchResult[]> {
     // Predefined popular destinations for exploration
     const destinations = [
@@ -226,7 +226,7 @@ export class LocationService {
 
   // Wishlist Management Methods
 
-  @InvalidateCache(['locations:popular'])
+  // @InvalidateCache(['locations:popular'])
   static async saveLocation(userId: string, data: SaveLocationRequest): Promise<SavedLocation> {
     try {
       // First, find or create the location
@@ -432,7 +432,7 @@ export class LocationService {
     );
   }
 
-  @Cacheable(cacheConfigs.user(userId))
+  // @Cacheable(cacheConfigs.user(userId))
   static async getMapViewLocations(userId: string): Promise<MapViewLocation[]> {
     const savedLocations = await prisma.userSavedLocation.findMany({
       where: { userId },

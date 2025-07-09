@@ -93,13 +93,14 @@ export class AuthController {
 
   static async me(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      if (!req.user) {
+      const userFromReq = (req as any).user;
+      if (!userFromReq) {
         throw new Error('User not found in request');
       }
 
       // Get user with profile
       const user = await prisma.user.findUnique({
-        where: { id: req.user.userId },
+        where: { id: userFromReq.userId },
         include: { profile: true },
       });
 
@@ -128,13 +129,14 @@ export class AuthController {
 
   static async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      if (!req.user) {
+      const userFromReq = (req as any).user;
+      if (!userFromReq) {
         throw new Error('User not found in request');
       }
 
       const refreshToken = req.body.refreshToken;
 
-      await AuthService.logout(req.user.userId, refreshToken);
+      await AuthService.logout(userFromReq.userId, refreshToken);
 
       res.json({
         data: {

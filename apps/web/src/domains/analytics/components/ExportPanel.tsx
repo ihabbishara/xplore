@@ -41,7 +41,7 @@ export function ExportPanel() {
   const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
-    dispatch(fetchExportHistory())
+    dispatch(fetchExportHistory({ limit: 10 }))
     loadTemplates()
   }, [dispatch])
 
@@ -59,7 +59,7 @@ export function ExportPanel() {
     try {
       await dispatch(exportAnalyticsData(exportOptions))
       setShowExportModal(false)
-      dispatch(fetchExportHistory())
+      dispatch(fetchExportHistory({ limit: 10 }))
     } catch (error) {
       console.error('Export error:', error)
     } finally {
@@ -72,7 +72,7 @@ export function ExportPanel() {
     try {
       await analyticsService.generateReportFromTemplate(templateId)
       setShowTemplatesModal(false)
-      dispatch(fetchExportHistory())
+      dispatch(fetchExportHistory({ limit: 10 }))
     } catch (error) {
       console.error('Template export error:', error)
     } finally {
@@ -235,7 +235,7 @@ export function ExportPanel() {
               className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
             >
               <div className="flex items-center gap-3">
-                {getFormatIcon(export_.format || 'pdf')}
+                {getFormatIcon((export_ as any).format || 'pdf')}
                 <div>
                   <p className="text-sm font-medium text-gray-900">
                     {export_.filename || 'Unknown file'}
@@ -494,7 +494,7 @@ export function ExportPanel() {
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
                   >
                     <div className="flex items-center gap-4">
-                      {getFormatIcon(export_.format || 'pdf')}
+                      {getFormatIcon((export_ as any).format || 'pdf')}
                       <div>
                         <p className="text-sm font-medium text-gray-900">
                           {export_.filename || 'Unknown file'}

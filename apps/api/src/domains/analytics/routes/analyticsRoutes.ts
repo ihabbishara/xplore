@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { AnalyticsController } from '../controllers/analyticsController'
-import { authMiddleware } from '../../../middleware/authMiddleware'
+import { authMiddleware } from '../../auth/middleware/authMiddleware'
 import {
   validateLocationMetrics,
   validateLocationComparison,
@@ -27,7 +27,7 @@ import {
   validateCleanupExports
 } from '../validation/analyticsValidation'
 
-const router = Router()
+const router: Router = Router()
 const prisma = new PrismaClient()
 const analyticsController = new AnalyticsController(prisma)
 

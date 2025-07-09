@@ -7,7 +7,7 @@ import {
 } from '../types/analytics.types'
 import { LocationAnalyticsService } from './locationAnalyticsService'
 import { redis } from '../../../lib/redis'
-import { logger } from '../../../lib/logger'
+import { logger } from '../../../shared/utils/logger'
 
 interface MatrixCriterion {
   weight: number
@@ -79,10 +79,11 @@ export class DecisionMatrixService {
         matrixType: input.matrixType,
         criteria: input.criteria,
         alternatives: input.alternatives,
-        scores,
+        scores: scores as any,
         rankings,
         sensitivity,
-        recommendation: recommendation.reasoning.join('. ')
+        finalDecision: recommendation.winner || undefined,
+        decisionReason: recommendation.reasoning.join('. ')
       }
     } catch (error) {
       logger.error('Error creating decision matrix:', error)
@@ -116,7 +117,8 @@ export class DecisionMatrixService {
         scores: matrix.scores as any,
         rankings: matrix.rankings as any,
         sensitivity: matrix.sensitivity as any,
-        recommendation: matrix.recommendation || undefined
+        finalDecision: matrix.finalDecision || undefined,
+        decisionReason: matrix.decisionReason || undefined
       }
     } catch (error) {
       logger.error('Error getting decision matrix:', error)
@@ -164,7 +166,8 @@ export class DecisionMatrixService {
           scores: matrix.scores as any,
           rankings: matrix.rankings as any,
           sensitivity: matrix.sensitivity as any,
-          recommendation: matrix.recommendation || undefined
+          finalDecision: matrix.finalDecision || undefined,
+          decisionReason: matrix.decisionReason || undefined
         })),
         total,
         hasMore: offset + matrices.length < total
@@ -200,7 +203,7 @@ export class DecisionMatrixService {
         userId,
         name: updates.name || existingMatrix.name,
         description: updates.description || existingMatrix.description || undefined,
-        matrixType: updates.matrixType || existingMatrix.matrixType,
+        matrixType: (updates.matrixType || existingMatrix.matrixType) as 'location' | 'property' | 'general',
         criteria: updates.criteria || (existingMatrix.criteria as any),
         alternatives: updates.alternatives || (existingMatrix.alternatives as any)
       }
@@ -219,7 +222,8 @@ export class DecisionMatrixService {
           scores: result.scores,
           rankings: result.rankings,
           sensitivity: result.sensitivity,
-          recommendation: result.recommendation,
+          finalDecision: result.finalDecision,
+          decisionReason: result.decisionReason,
           updatedAt: new Date()
         }
       })
@@ -327,11 +331,12 @@ export class DecisionMatrixService {
         where: {
           id: { in: propertyIds }
         },
-        include: {
-          priceHistory: {
-            orderBy: { date: 'desc' },
-            take: 1
-          }
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          createdAt: true,
+          updatedAt: true
         }
       })
 
@@ -339,10 +344,10 @@ export class DecisionMatrixService {
       const alternatives: Record<string, MatrixAlternative> = {}
       
       properties.forEach(property => {
-        const currentPrice = property.priceHistory[0]?.price || property.price
+        const currentPrice = Number(property.price) || 0
         
         alternatives[property.id] = {
-          name: property.title,
+          name: property.title || 'Unknown Property',
           data: this.extractPropertyDataForMatrix(property, currentPrice, criteria)
         }
       })
@@ -443,7 +448,7 @@ export class DecisionMatrixService {
     }
 
     return {
-      templates: templates[matrixType as keyof typeof templates] || []
+      templates: (templates as any)[matrixType] || []
     }
   }
 
@@ -665,8 +670,9 @@ export class DecisionMatrixService {
         alternatives: input.alternatives,
         scores,
         rankings,
-        sensitivity,
-        recommendation: recommendation.reasoning.join('. ')
+        sensitivity: sensitivity as any,
+        finalDecision: recommendation.winner,
+        decisionReason: recommendation.reasoning.join('. ')
       }
     })
   }

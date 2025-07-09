@@ -64,8 +64,8 @@ export function AnalyticsFiltersPanel() {
     setTempFilters({
       ...tempFilters,
       dateRange: {
-        ...tempFilters.dateRange,
-        [field]: date
+        start: field === 'start' ? date : tempFilters.dateRange?.start || new Date(),
+        end: field === 'end' ? date : tempFilters.dateRange?.end || new Date()
       }
     })
   }
@@ -74,8 +74,8 @@ export function AnalyticsFiltersPanel() {
     setTempFilters({
       ...tempFilters,
       sentiment: {
-        ...tempFilters.sentiment,
-        [field]: value
+        min: field === 'min' ? value : tempFilters.sentiment?.min || -1,
+        max: field === 'max' ? value : tempFilters.sentiment?.max || 1
       }
     })
   }
@@ -84,8 +84,8 @@ export function AnalyticsFiltersPanel() {
     setTempFilters({
       ...tempFilters,
       cost: {
-        ...tempFilters.cost,
-        [field]: value
+        min: field === 'min' ? value : tempFilters.cost?.min || 0,
+        max: field === 'max' ? value : tempFilters.cost?.max || 10000
       }
     })
   }

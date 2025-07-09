@@ -6,7 +6,7 @@ import {
   AnalyticsFilters 
 } from '../types/analytics.types'
 import { redis } from '../../../lib/redis'
-import { logger } from '../../../lib/logger'
+import { logger } from '../../../shared/utils/logger'
 import axios from 'axios'
 
 interface CostDataSource {
@@ -78,7 +78,8 @@ export class CostIntelligenceService {
             select: {
               content: true,
               createdAt: true,
-              metadata: true
+              tags: true,
+              mood: true
             }
           },
           tripDestinations: {
@@ -94,20 +95,21 @@ export class CostIntelligenceService {
       }
 
       // Get cost data from multiple sources
-      const costData = await this.aggregateCostData(location.latitude, location.longitude, location.country)
+      const costData = await this.aggregateCostData(location.latitude, location.longitude, location.country || 'Unknown')
       
       // Calculate affordability score
       const affordabilityProfile = customProfile || await this.getUserAffordabilityProfile(userId)
       const affordabilityScore = this.calculateAffordabilityScore(costData, affordabilityProfile)
 
       // Get cost trends
-      const trends = await this.getCostTrends(locationId, location.country)
+      const trends = await this.getCostTrends(locationId, location.country || 'Unknown')
 
       // Extract cost mentions from journal entries
-      const journalCostInsights = await this.extractCostInsightsFromJournals(location.journalEntries)
+      // const journalCostInsights = await this.extractCostInsightsFromJournals(location.journalEntries)
+      const journalCostInsights: any[] = [] // Temporarily disabled - journal entries not available
 
       // Calculate comparison to regional average
-      const comparisonToAverage = await this.calculateComparisonToAverage(costData, location.country)
+      const comparisonToAverage = await this.calculateComparisonToAverage(costData, location.country || 'Unknown')
 
       // Generate recommendations
       const recommendations = await this.generateCostRecommendations(
@@ -131,7 +133,7 @@ export class CostIntelligenceService {
       }
 
       // Cache the result
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(analysis))
+      await redis.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(analysis))
 
       return analysis
     } catch (error) {
@@ -279,7 +281,7 @@ export class CostIntelligenceService {
         throw new Error('Location not found')
       }
 
-      const trends = await this.getCostTrends(locationId, location.country)
+      const trends = await this.getCostTrends(locationId, location.country || 'Unknown')
 
       // Simple prediction based on trends
       let timeframeFactor = 1

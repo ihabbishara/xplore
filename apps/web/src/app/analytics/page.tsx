@@ -42,7 +42,7 @@ export default function AnalyticsPage() {
   if (isLoading && !analytics.overview) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner size="large" />
+        <LoadingSpinner size="lg" />
       </div>
     )
   }

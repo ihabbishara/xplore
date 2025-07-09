@@ -89,13 +89,13 @@ export function CostTrendsChart({ trends }: CostTrendsChartProps) {
         <div className="text-right">
           <p className="text-sm text-gray-600">Avg Daily Cost</p>
           <p className="text-2xl font-semibold text-gray-900">${averageDailyCost.toFixed(0)}</p>
-          <p className={`text-xs flex items-center gap-1 ${parseFloat(costTrend) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-            {parseFloat(costTrend) >= 0 ? (
+          <p className={`text-xs flex items-center gap-1 ${parseFloat(String(costTrend)) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+            {parseFloat(String(costTrend)) >= 0 ? (
               <TrendingUp className="w-3 h-3" />
             ) : (
               <TrendingDown className="w-3 h-3" />
             )}
-            {parseFloat(costTrend) >= 0 ? '+' : ''}{costTrend}% from start
+            {parseFloat(String(costTrend)) >= 0 ? '+' : ''}{costTrend}% from start
           </p>
         </div>
       </div>

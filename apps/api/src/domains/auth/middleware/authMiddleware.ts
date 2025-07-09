@@ -5,14 +5,9 @@ import { AuthenticationError, AuthorizationError } from '@/shared/utils/errors';
 import { JWTPayload } from '@xplore/shared';
 import { logger } from '@/shared/utils/logger';
 
-// Extend Express Request type
-declare global {
-  namespace Express {
-    interface Request {
-      user?: JWTPayload;
-    }
-  }
-}
+// Express Request type is already extended in src/types/express.d.ts
+
+export const authMiddleware = authenticate;
 
 export async function authenticate(
   req: Request,
@@ -43,7 +38,7 @@ export async function authenticate(
       payload = await AuthService.verifyAccessToken(token);
     }
 
-    req.user = payload;
+    (req as any).user = { ...payload, id: payload.userId };
     next();
   } catch (error) {
     logger.error('Authentication error:', error);
@@ -56,12 +51,12 @@ export function requireVerifiedEmail(
   res: Response,
   next: NextFunction
 ): void {
-  if (!req.user) {
+  if (!(req as any).user) {
     next(new AuthenticationError('Authentication required'));
     return;
   }
 
-  if (!req.user.emailVerified) {
+  if (!(req as any).user.emailVerified) {
     next(new AuthorizationError('Email verification required'));
     return;
   }

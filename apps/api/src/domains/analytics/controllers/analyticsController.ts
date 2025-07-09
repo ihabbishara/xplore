@@ -8,9 +8,17 @@ import { DashboardService } from '../services/dashboardService'
 import { BehaviorPatternService } from '../services/behaviorPatternService'
 import { RealtimeAnalyticsService } from '../services/realtimeAnalyticsService'
 import { ExportReportingService } from '../services/exportReportingService'
-import { WeatherService } from '../../weather/services/weatherService'
+// import { WeatherService } from '../../weather/services/weatherService'
 import { validationResult } from 'express-validator'
-import { logger } from '../../../lib/logger'
+import { logger } from '../../../shared/utils/logger'
+
+// Type-safe request with user
+interface AuthRequest extends Request {
+  user?: {
+    id: string
+    email?: string
+  }
+}
 
 export class AnalyticsController {
   private locationAnalyticsService: LocationAnalyticsService
@@ -24,11 +32,10 @@ export class AnalyticsController {
 
   constructor(private prisma: PrismaClient, realtimeService?: RealtimeAnalyticsService) {
     this.sentimentAnalysisService = new SentimentAnalysisService()
-    const weatherService = new WeatherService()
+    // const weatherService = new WeatherService()
     this.locationAnalyticsService = new LocationAnalyticsService(
       prisma,
-      this.sentimentAnalysisService,
-      weatherService
+      this.sentimentAnalysisService
     )
     this.costIntelligenceService = new CostIntelligenceService(prisma)
     this.decisionMatrixService = new DecisionMatrixService(prisma, this.locationAnalyticsService)
@@ -52,7 +59,7 @@ export class AnalyticsController {
    * GET /api/analytics/location/:locationId/metrics
    * Get comprehensive location metrics
    */
-  async getLocationMetrics(req: Request, res: Response): Promise<void> {
+  async getLocationMetrics(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -82,7 +89,7 @@ export class AnalyticsController {
    * POST /api/analytics/locations/compare
    * Compare multiple locations
    */
-  async compareLocations(req: Request, res: Response): Promise<void> {
+  async compareLocations(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -124,7 +131,7 @@ export class AnalyticsController {
    * GET /api/analytics/location/:locationId/analysis
    * Get complete location analysis
    */
-  async getCompleteLocationAnalysis(req: Request, res: Response): Promise<void> {
+  async getCompleteLocationAnalysis(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -154,7 +161,7 @@ export class AnalyticsController {
    * POST /api/analytics/sentiment/analyze
    * Analyze sentiment of text
    */
-  async analyzeSentiment(req: Request, res: Response): Promise<void> {
+  async analyzeSentiment(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -187,7 +194,7 @@ export class AnalyticsController {
    * POST /api/analytics/sentiment/batch
    * Analyze sentiment of multiple texts
    */
-  async batchAnalyzeSentiment(req: Request, res: Response): Promise<void> {
+  async batchAnalyzeSentiment(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -216,7 +223,7 @@ export class AnalyticsController {
    * GET /api/analytics/location/:locationId/cost
    * Get cost analysis for a location
    */
-  async getLocationCostAnalysis(req: Request, res: Response): Promise<void> {
+  async getLocationCostAnalysis(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -246,7 +253,7 @@ export class AnalyticsController {
    * POST /api/analytics/locations/cost/compare
    * Compare costs between multiple locations
    */
-  async compareLocationCosts(req: Request, res: Response): Promise<void> {
+  async compareLocationCosts(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -276,7 +283,7 @@ export class AnalyticsController {
    * GET /api/analytics/location/:locationId/cost/trends
    * Get cost trends for a location
    */
-  async getCostTrends(req: Request, res: Response): Promise<void> {
+  async getCostTrends(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -296,7 +303,7 @@ export class AnalyticsController {
         return
       }
 
-      const trends = await this.costIntelligenceService.getCostTrends(locationId, location.country)
+      const trends = await this.costIntelligenceService.getCostTrends(locationId, location.country || 'Unknown')
 
       res.json({
         success: true,
@@ -315,7 +322,7 @@ export class AnalyticsController {
    * GET /api/analytics/location/:locationId/cost/predictions
    * Get cost predictions for a location
    */
-  async getCostPredictions(req: Request, res: Response): Promise<void> {
+  async getCostPredictions(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -350,7 +357,7 @@ export class AnalyticsController {
    * GET /api/analytics/location/:locationId/cost/index
    * Get living cost index for a location
    */
-  async getLivingCostIndex(req: Request, res: Response): Promise<void> {
+  async getLivingCostIndex(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -383,7 +390,7 @@ export class AnalyticsController {
    * POST /api/analytics/location/:locationId/budget
    * Get budget recommendations for a location
    */
-  async getBudgetRecommendations(req: Request, res: Response): Promise<void> {
+  async getBudgetRecommendations(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -418,7 +425,7 @@ export class AnalyticsController {
    * GET /api/analytics/sentiment/emotions
    * Get emotion analysis for text
    */
-  async analyzeEmotions(req: Request, res: Response): Promise<void> {
+  async analyzeEmotions(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -450,7 +457,7 @@ export class AnalyticsController {
    * GET /api/analytics/sentiment/trends
    * Get sentiment trends over time
    */
-  async getSentimentTrends(req: Request, res: Response): Promise<void> {
+  async getSentimentTrends(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -506,7 +513,7 @@ export class AnalyticsController {
    * POST /api/analytics/sentiment/category
    * Analyze sentiment by category
    */
-  async analyzeSentimentByCategory(req: Request, res: Response): Promise<void> {
+  async analyzeSentimentByCategory(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -538,7 +545,7 @@ export class AnalyticsController {
    * POST /api/analytics/decision-matrix
    * Create a decision matrix
    */
-  async createDecisionMatrix(req: Request, res: Response): Promise<void> {
+  async createDecisionMatrix(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -580,7 +587,7 @@ export class AnalyticsController {
    * GET /api/analytics/decision-matrix/:matrixId
    * Get a decision matrix
    */
-  async getDecisionMatrix(req: Request, res: Response): Promise<void> {
+  async getDecisionMatrix(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -615,7 +622,7 @@ export class AnalyticsController {
    * GET /api/analytics/decision-matrices
    * List user's decision matrices
    */
-  async listDecisionMatrices(req: Request, res: Response): Promise<void> {
+  async listDecisionMatrices(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -659,7 +666,7 @@ export class AnalyticsController {
    * PUT /api/analytics/decision-matrix/:matrixId
    * Update a decision matrix
    */
-  async updateDecisionMatrix(req: Request, res: Response): Promise<void> {
+  async updateDecisionMatrix(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -695,7 +702,7 @@ export class AnalyticsController {
    * DELETE /api/analytics/decision-matrix/:matrixId
    * Delete a decision matrix
    */
-  async deleteDecisionMatrix(req: Request, res: Response): Promise<void> {
+  async deleteDecisionMatrix(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -730,7 +737,7 @@ export class AnalyticsController {
    * POST /api/analytics/decision-matrix/location-comparison
    * Create location comparison matrix
    */
-  async createLocationComparisonMatrix(req: Request, res: Response): Promise<void> {
+  async createLocationComparisonMatrix(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -770,7 +777,7 @@ export class AnalyticsController {
    * POST /api/analytics/decision-matrix/property-comparison
    * Create property comparison matrix
    */
-  async createPropertyComparisonMatrix(req: Request, res: Response): Promise<void> {
+  async createPropertyComparisonMatrix(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -810,7 +817,7 @@ export class AnalyticsController {
    * GET /api/analytics/decision-matrix/templates
    * Get decision matrix templates
    */
-  async getMatrixTemplates(req: Request, res: Response): Promise<void> {
+  async getMatrixTemplates(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -839,7 +846,7 @@ export class AnalyticsController {
    * GET /api/analytics/dashboard/overview
    * Get dashboard overview
    */
-  async getDashboardOverview(req: Request, res: Response): Promise<void> {
+  async getDashboardOverview(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -891,7 +898,7 @@ export class AnalyticsController {
    * GET /api/analytics/dashboard/insights
    * Get dashboard insights
    */
-  async getDashboardInsights(req: Request, res: Response): Promise<void> {
+  async getDashboardInsights(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -942,7 +949,7 @@ export class AnalyticsController {
    * GET /api/analytics/dashboard/sentiment/trends
    * Get sentiment trends
    */
-  async getDashboardSentimentTrends(req: Request, res: Response): Promise<void> {
+  async getDashboardSentimentTrends(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -981,7 +988,7 @@ export class AnalyticsController {
    * GET /api/analytics/dashboard/cost/trends
    * Get cost trends
    */
-  async getDashboardCostTrends(req: Request, res: Response): Promise<void> {
+  async getDashboardCostTrends(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1019,7 +1026,7 @@ export class AnalyticsController {
    * POST /api/analytics/dashboard/location/compare
    * Get location comparison for dashboard
    */
-  async getDashboardLocationComparison(req: Request, res: Response): Promise<void> {
+  async getDashboardLocationComparison(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1059,7 +1066,7 @@ export class AnalyticsController {
    * POST /api/analytics/dashboard/insights/generate
    * Generate insights for dashboard
    */
-  async generateDashboardInsights(req: Request, res: Response): Promise<void> {
+  async generateDashboardInsights(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1093,7 +1100,7 @@ export class AnalyticsController {
    * POST /api/analytics/dashboard/cache/refresh
    * Refresh dashboard cache
    */
-  async refreshDashboardCache(req: Request, res: Response): Promise<void> {
+  async refreshDashboardCache(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1127,7 +1134,7 @@ export class AnalyticsController {
    * POST /api/analytics/behavior/analyze
    * Analyze user behavior patterns
    */
-  async analyzeBehaviorPatterns(req: Request, res: Response): Promise<void> {
+  async analyzeBehaviorPatterns(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1161,7 +1168,7 @@ export class AnalyticsController {
    * GET /api/analytics/behavior/biases
    * Detect cognitive biases
    */
-  async detectCognitiveBiases(req: Request, res: Response): Promise<void> {
+  async detectCognitiveBiases(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1195,7 +1202,7 @@ export class AnalyticsController {
    * GET /api/analytics/behavior/insights
    * Get behavior insights
    */
-  async getBehaviorInsights(req: Request, res: Response): Promise<void> {
+  async getBehaviorInsights(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1229,7 +1236,7 @@ export class AnalyticsController {
    * POST /api/analytics/behavior/predict
    * Predict user behavior
    */
-  async predictBehavior(req: Request, res: Response): Promise<void> {
+  async predictBehavior(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1265,7 +1272,7 @@ export class AnalyticsController {
    * GET /api/analytics/behavior/patterns
    * List behavior patterns
    */
-  async listBehaviorPatterns(req: Request, res: Response): Promise<void> {
+  async listBehaviorPatterns(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1310,7 +1317,7 @@ export class AnalyticsController {
    * POST /api/analytics/realtime/queue-job
    * Queue a real-time processing job
    */
-  async queueRealtimeJob(req: Request, res: Response): Promise<void> {
+  async queueRealtimeJob(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1351,7 +1358,7 @@ export class AnalyticsController {
    * GET /api/analytics/realtime/job/:jobId
    * Get job status
    */
-  async getJobStatus(req: Request, res: Response): Promise<void> {
+  async getJobStatus(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1390,7 +1397,7 @@ export class AnalyticsController {
    * GET /api/analytics/realtime/metrics
    * Get real-time metrics
    */
-  async getRealtimeMetrics(req: Request, res: Response): Promise<void> {
+  async getRealtimeMetrics(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1422,7 +1429,7 @@ export class AnalyticsController {
    * POST /api/analytics/realtime/process-update
    * Process real-time analytics update
    */
-  async processRealtimeUpdate(req: Request, res: Response): Promise<void> {
+  async processRealtimeUpdate(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1473,7 +1480,7 @@ export class AnalyticsController {
    * POST /api/analytics/export
    * Export analytics data in specified format
    */
-  async exportAnalyticsData(req: Request, res: Response): Promise<void> {
+  async exportAnalyticsData(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1509,7 +1516,7 @@ export class AnalyticsController {
    * GET /api/analytics/export/templates
    * Get available export templates
    */
-  async getExportTemplates(req: Request, res: Response): Promise<void> {
+  async getExportTemplates(req: AuthRequest, res: Response): Promise<void> {
     try {
       const templates = await this.exportReportingService.getExportTemplates()
 
@@ -1530,7 +1537,7 @@ export class AnalyticsController {
    * POST /api/analytics/export/template/:templateId
    * Generate report from template
    */
-  async generateReportFromTemplate(req: Request, res: Response): Promise<void> {
+  async generateReportFromTemplate(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1571,7 +1578,7 @@ export class AnalyticsController {
    * POST /api/analytics/export/schedule
    * Schedule recurring export
    */
-  async scheduleRecurringExport(req: Request, res: Response): Promise<void> {
+  async scheduleRecurringExport(req: AuthRequest, res: Response): Promise<void> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -1611,7 +1618,7 @@ export class AnalyticsController {
    * GET /api/analytics/export/history
    * Get export history for user
    */
-  async getExportHistory(req: Request, res: Response): Promise<void> {
+  async getExportHistory(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId = req.user?.id
 
@@ -1648,7 +1655,7 @@ export class AnalyticsController {
    * GET /api/analytics/export/summary
    * Generate summary report
    */
-  async generateSummaryReport(req: Request, res: Response): Promise<void> {
+  async generateSummaryReport(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId = req.user?.id
 
@@ -1689,7 +1696,7 @@ export class AnalyticsController {
    * DELETE /api/analytics/export/cleanup
    * Cleanup old export files (admin only)
    */
-  async cleanupOldExports(req: Request, res: Response): Promise<void> {
+  async cleanupOldExports(req: AuthRequest, res: Response): Promise<void> {
     try {
       // Check if user is admin (simplified check)
       const isAdmin = req.user?.email?.endsWith('@admin.com')

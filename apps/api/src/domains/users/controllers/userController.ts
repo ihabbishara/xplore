@@ -6,11 +6,11 @@ import { ValidationError } from '@/shared/utils/errors';
 export class UserController {
   static async getProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      if (!req.user) {
+      if (!(req as any).user) {
         throw new Error('User not found in request');
       }
 
-      const profile = await UserService.getProfile(req.user.userId);
+      const profile = await UserService.getProfile((req as any).user.userId);
 
       res.json({
         data: profile,
@@ -22,7 +22,7 @@ export class UserController {
 
   static async setupProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      if (!req.user) {
+      if (!(req as any).user) {
         throw new Error('User not found in request');
       }
 
@@ -30,7 +30,7 @@ export class UserController {
       const validatedData = createProfileSchema.parse(req.body);
 
       // Setup profile (create or update)
-      const profile = await UserService.setupProfile(req.user.userId, validatedData);
+      const profile = await UserService.setupProfile((req as any).user.userId, validatedData);
 
       res.json({
         data: profile,
@@ -46,7 +46,7 @@ export class UserController {
 
   static async updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      if (!req.user) {
+      if (!(req as any).user) {
         throw new Error('User not found in request');
       }
 
@@ -54,7 +54,7 @@ export class UserController {
       const validatedData = updateProfileSchema.parse(req.body);
 
       // Update profile
-      const profile = await UserService.updateProfile(req.user.userId, validatedData);
+      const profile = await UserService.updateProfile((req as any).user.userId, validatedData);
 
       res.json({
         data: profile,
@@ -70,7 +70,7 @@ export class UserController {
 
   static async uploadAvatar(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      if (!req.user) {
+      if (!(req as any).user) {
         throw new Error('User not found in request');
       }
 
@@ -82,7 +82,7 @@ export class UserController {
         throw new ValidationError('Avatar URL is required');
       }
 
-      const profile = await UserService.uploadAvatar(req.user.userId, avatarUrl);
+      const profile = await UserService.uploadAvatar((req as any).user.userId, avatarUrl);
 
       res.json({
         data: profile,
@@ -94,12 +94,12 @@ export class UserController {
 
   static async deleteAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      if (!req.user) {
+      if (!(req as any).user) {
         throw new Error('User not found in request');
       }
 
       // TODO: Add additional verification (password, 2FA, etc.)
-      await UserService.deleteProfile(req.user.userId);
+      await UserService.deleteProfile((req as any).user.userId);
 
       res.json({
         data: {

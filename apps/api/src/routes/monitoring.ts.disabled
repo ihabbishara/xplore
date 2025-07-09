@@ -175,7 +175,7 @@ router.post('/cache/clear', authenticate, requireAdmin, async (req: Request, res
       cleared = await cache.invalidateByTags(tags);
     } else {
       // Clear all cache
-      await redis.flushdb();
+      await redis.flushDb();
       cleared = -1; // Indicate all cleared
     }
 

@@ -25,5 +25,5 @@
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "coverage", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": ["node_modules", "dist", "coverage", "**/*.test.ts", "**/*.spec.ts", "src/domains/analytics.disabled/**/*", "src/test.disabled/**/*", "src/routes/monitoring.ts.disabled", "src/lib/database/optimizations.ts.disabled", "src/domains/checklists.disabled/**/*", "src/domains/weather.disabled/**/*", "src/domains/journal.disabled/**/*", "src/domains/trips.disabled/**/*", "src/domains/properties.disabled/**/*"]
 }

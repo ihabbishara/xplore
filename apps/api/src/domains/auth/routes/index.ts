@@ -12,7 +12,7 @@ import {
   resetPasswordValidation
 } from '../validations/auth.validation';
 
-const router = Router();
+const router: Router = Router();
 
 // Rate limiters
 const registerLimiter = createRateLimiter({

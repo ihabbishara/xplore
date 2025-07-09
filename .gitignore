@@ -61,3 +61,8 @@ ios/build/
 # Misc
 .vercel
 *.pem
+
+# Firebase Service Account Keys
+gcp/service_accounts/
+*.serviceAccountKey.json
+firebase-*.json

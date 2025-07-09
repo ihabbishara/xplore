@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { LocationController } from '@/domains/locations/controllers/locationController';
-import { authenticate } from '@/domains/auth/middleware/authMiddleware';
+import { authenticate, optionalAuth } from '@/domains/auth/middleware/authMiddleware';
 import { createRateLimiter } from '@/shared/middleware/rateLimiter';
 import { validate } from '@/middleware/validation';
 import {
@@ -11,7 +11,7 @@ import {
   coordinatesValidation
 } from '../validations/location.validation';
 
-const router = Router();
+const router: Router = Router();
 
 // Rate limiter for location searches
 const searchLimiter = createRateLimiter({
@@ -32,8 +32,8 @@ router.get('/search', searchLimiter, validate(searchValidation), LocationControl
 router.get('/reverse', searchLimiter, validate(coordinatesValidation), LocationController.reverseGeocode);
 router.get('/popular', LocationController.getPopularDestinations);
 
-// Protected routes - Wishlist management
-router.use(authenticate); // All routes below require authentication
+// Protected routes - Wishlist management (temporary: optional auth for development)
+router.use(optionalAuth); // All routes below have optional authentication
 
 // Wishlist endpoints
 router.post('/save', wishlistLimiter, validate(saveLocationValidation), LocationController.saveLocation);

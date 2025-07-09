@@ -11,7 +11,7 @@ import { SentimentAnalysisService } from './sentimentAnalysisService'
 import { DashboardService } from './dashboardService'
 import { BehaviorPatternService } from './behaviorPatternService'
 import { redis } from '../../../lib/redis'
-import { logger } from '../../../lib/logger'
+import { logger } from '../../../shared/utils/logger'
 import EventEmitter from 'events'
 
 interface ProcessingQueue {
@@ -645,13 +645,13 @@ export class RealtimeAnalyticsService extends EventEmitter {
 
   private async storeAnalyticsUpdate(update: RealtimeAnalyticsUpdate): Promise<void> {
     try {
-      await redis.lpush(
+      await redis.lPush(
         `analytics_updates:${update.userId}`,
         JSON.stringify(update)
       )
       
       // Keep only last 1000 updates
-      await redis.ltrim(`analytics_updates:${update.userId}`, 0, 999)
+      await redis.lTrim(`analytics_updates:${update.userId}`, 0, 999)
     } catch (error) {
       logger.error('Error storing analytics update:', error)
     }

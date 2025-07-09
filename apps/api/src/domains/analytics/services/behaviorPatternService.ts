@@ -7,7 +7,7 @@ import {
 } from '../types/analytics.types'
 import { SentimentAnalysisService } from './sentimentAnalysisService'
 import { redis } from '../../../lib/redis'
-import { logger } from '../../../lib/logger'
+import { logger } from '../../../shared/utils/logger'
 
 interface PatternAnalysisResult {
   pattern: any
@@ -73,10 +73,10 @@ export class BehaviorPatternService {
 
       // Convert to BehaviorPattern objects
       const allPatterns = [
-        ...preferencePatterns.map(p => this.createBehaviorPattern(userId, 'preference', p)),
-        ...decisionPatterns.map(p => this.createBehaviorPattern(userId, 'decision', p)),
-        ...explorationPatterns.map(p => this.createBehaviorPattern(userId, 'exploration', p)),
-        ...biasPatterns.map(p => this.createBehaviorPattern(userId, 'bias', p))
+        ...preferencePatterns.map(p => this.createBehaviorPatternFromAnalysis(userId, 'preference', p)),
+        ...decisionPatterns.map(p => this.createBehaviorPatternFromAnalysis(userId, 'decision', p)),
+        ...explorationPatterns.map(p => this.createBehaviorPatternFromAnalysis(userId, 'exploration', p)),
+        ...biasPatterns.map(p => this.createBehaviorPatternFromAnalysis(userId, 'bias', p))
       ]
 
       // Filter patterns by reliability and significance
@@ -109,7 +109,7 @@ export class BehaviorPatternService {
       }
 
       // Cache the result
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result))
+      await redis.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(result))
 
       return result
     } catch (error) {
@@ -301,15 +301,15 @@ export class BehaviorPatternService {
         patternType: pattern.patternType,
         category: pattern.category,
         pattern: pattern.pattern,
-        frequency: pattern.frequency,
-        confidence: pattern.confidence,
+        frequency: Number(pattern.frequency),
+        confidence: Number(pattern.confidence),
         triggers: pattern.triggers,
         outcomes: pattern.outcomes,
         firstObserved: pattern.firstObserved,
         lastObserved: pattern.lastObserved,
         evolution: pattern.evolution,
         dataPoints: pattern.dataPoints,
-        reliability: pattern.reliability,
+        reliability: Number(pattern.reliability),
         isActive: pattern.isActive
       }
     } catch (error) {
@@ -340,15 +340,15 @@ export class BehaviorPatternService {
         patternType: pattern.patternType,
         category: pattern.category,
         pattern: pattern.pattern,
-        frequency: pattern.frequency,
-        confidence: pattern.confidence,
+        frequency: Number(pattern.frequency),
+        confidence: Number(pattern.confidence),
         triggers: pattern.triggers,
         outcomes: pattern.outcomes,
         firstObserved: pattern.firstObserved,
         lastObserved: pattern.lastObserved,
         evolution: pattern.evolution,
         dataPoints: pattern.dataPoints,
-        reliability: pattern.reliability,
+        reliability: Number(pattern.reliability),
         isActive: pattern.isActive
       }
     } catch (error) {
@@ -386,15 +386,15 @@ export class BehaviorPatternService {
         patternType: pattern.patternType,
         category: pattern.category,
         pattern: pattern.pattern,
-        frequency: pattern.frequency,
-        confidence: pattern.confidence,
+        frequency: Number(pattern.frequency),
+        confidence: Number(pattern.confidence),
         triggers: pattern.triggers,
         outcomes: pattern.outcomes,
         firstObserved: pattern.firstObserved,
         lastObserved: pattern.lastObserved,
         evolution: pattern.evolution,
         dataPoints: pattern.dataPoints,
-        reliability: pattern.reliability,
+        reliability: Number(pattern.reliability),
         isActive: pattern.isActive
       }))
     } catch (error) {
@@ -417,7 +417,7 @@ export class BehaviorPatternService {
         take: 100
       }),
       this.prisma.trip.findMany({
-        where: { userId },
+        where: { creatorId: userId },
         include: {
           destinations: {
             include: {
@@ -433,7 +433,7 @@ export class BehaviorPatternService {
         include: {
           location: true
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { savedAt: 'desc' },
         take: 100
       }),
       this.prisma.locationAnalytics.findMany({
@@ -651,7 +651,7 @@ export class BehaviorPatternService {
     
     activities.forEach(activity => {
       const values = activityData.map((data: any) => data.preferences[activity] || 0)
-      aggregated[activity] = values.reduce((sum, val) => sum + val, 0) / values.length
+      aggregated[activity] = values.reduce((sum: number, val: number) => sum + val, 0) / values.length
     })
 
     const topActivity = Object.entries(aggregated)
@@ -701,7 +701,7 @@ export class BehaviorPatternService {
     }, {})
 
     const preferredSeason = Object.entries(seasonCounts)
-      .sort(([, a], [, b]) => b - a)[0][0]
+      .sort(([, a], [, b]) => (b as number) - (a as number))[0][0]
 
     return {
       pattern: {
@@ -748,7 +748,7 @@ export class BehaviorPatternService {
       return { decisionTime: null, acted: false }
     })
 
-    const actedDecisions = speedData.filter(d => d.acted && d.decisionTime !== null)
+    const actedDecisions = speedData.filter((d: any) => d.acted && d.decisionTime !== null)
     
     if (actedDecisions.length === 0) {
       return {
@@ -844,9 +844,9 @@ export class BehaviorPatternService {
       costLevel: saved.location.costLevel || 'unknown'
     }))
 
-    const countryConsistency = this.calculateCategoricalConsistency(locationData.map(d => d.country))
-    const climateConsistency = this.calculateCategoricalConsistency(locationData.map(d => d.climate))
-    const costConsistency = this.calculateCategoricalConsistency(locationData.map(d => d.costLevel))
+    const countryConsistency = this.calculateCategoricalConsistency(locationData.map((d: any) => d.country))
+    const climateConsistency = this.calculateCategoricalConsistency(locationData.map((d: any) => d.climate))
+    const costConsistency = this.calculateCategoricalConsistency(locationData.map((d: any) => d.costLevel))
 
     const overallConsistency = (countryConsistency + climateConsistency + costConsistency) / 3
     const consistencyLevel = overallConsistency > 0.7 ? 'high' : overallConsistency < 0.3 ? 'low' : 'moderate'
@@ -1105,7 +1105,7 @@ export class BehaviorPatternService {
     // Simple heuristic: check if first destination in trips influences subsequent choices
     const firstDestinations = trips.map((trip: any) => trip.destinations[0]?.location?.country)
     const firstCountry = firstDestinations[0]
-    const sameCountryCount = firstDestinations.filter(country => country === firstCountry).length
+    const sameCountryCount = firstDestinations.filter((country: any) => country === firstCountry).length
     
     const anchoringScore = sameCountryCount / trips.length
     const biasLevel = anchoringScore > 0.7 ? 'high' : anchoringScore < 0.3 ? 'low' : 'moderate'
@@ -1242,7 +1242,7 @@ export class BehaviorPatternService {
     }
   }
 
-  private createBehaviorPattern(
+  private createBehaviorPatternFromAnalysis(
     userId: string,
     patternType: string,
     analysis: PatternAnalysisResult
@@ -1338,41 +1338,49 @@ export class BehaviorPatternService {
   private async saveBehaviorPatterns(patterns: BehaviorPattern[]): Promise<void> {
     for (const pattern of patterns) {
       try {
-        await this.prisma.userBehaviorPattern.upsert({
+        // Find existing pattern
+        const existingPattern = await this.prisma.userBehaviorPattern.findFirst({
           where: {
-            userId_patternType_category: {
-              userId: pattern.userId,
-              patternType: pattern.patternType,
-              category: pattern.category
-            }
-          },
-          update: {
-            pattern: pattern.pattern,
-            frequency: pattern.frequency,
-            confidence: pattern.confidence,
-            triggers: pattern.triggers,
-            outcomes: pattern.outcomes,
-            lastObserved: pattern.lastObserved,
-            dataPoints: pattern.dataPoints,
-            reliability: pattern.reliability,
-            isActive: pattern.isActive
-          },
-          create: {
             userId: pattern.userId,
             patternType: pattern.patternType,
-            category: pattern.category,
-            pattern: pattern.pattern,
-            frequency: pattern.frequency,
-            confidence: pattern.confidence,
-            triggers: pattern.triggers,
-            outcomes: pattern.outcomes,
-            firstObserved: pattern.firstObserved,
-            lastObserved: pattern.lastObserved,
-            dataPoints: pattern.dataPoints,
-            reliability: pattern.reliability,
-            isActive: pattern.isActive
+            category: pattern.category
           }
         })
+
+        if (existingPattern) {
+          await this.prisma.userBehaviorPattern.update({
+            where: { id: existingPattern.id },
+            data: {
+              pattern: pattern.pattern,
+              frequency: pattern.frequency,
+              confidence: pattern.confidence,
+              triggers: pattern.triggers,
+              outcomes: pattern.outcomes,
+              lastObserved: pattern.lastObserved,
+              dataPoints: pattern.dataPoints,
+              reliability: Number(pattern.reliability),
+              isActive: pattern.isActive
+            }
+          })
+        } else {
+          await this.prisma.userBehaviorPattern.create({
+            data: {
+              userId: pattern.userId,
+              patternType: pattern.patternType,
+              category: pattern.category,
+              pattern: pattern.pattern,
+              frequency: pattern.frequency,
+              confidence: pattern.confidence,
+              triggers: pattern.triggers,
+              outcomes: pattern.outcomes,
+              firstObserved: pattern.firstObserved,
+              lastObserved: pattern.lastObserved,
+            dataPoints: pattern.dataPoints,
+            reliability: Number(pattern.reliability),
+            isActive: pattern.isActive
+            }
+          })
+        }
       } catch (error) {
         logger.error(`Error saving behavior pattern: ${error}`)
       }

@@ -83,8 +83,8 @@ export function SentimentTrendsChart({ trends }: SentimentTrendsChartProps) {
         <div className="text-right">
           <p className="text-sm text-gray-600">Average Sentiment</p>
           <p className="text-2xl font-semibold text-gray-900">{averageSentiment}/5.0</p>
-          <p className={`text-xs ${parseFloat(sentimentTrend) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {parseFloat(sentimentTrend) >= 0 ? '+' : ''}{sentimentTrend}% from start
+          <p className={`text-xs ${parseFloat(String(sentimentTrend)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {parseFloat(String(sentimentTrend)) >= 0 ? '+' : ''}{sentimentTrend}% from start
           </p>
         </div>
       </div>

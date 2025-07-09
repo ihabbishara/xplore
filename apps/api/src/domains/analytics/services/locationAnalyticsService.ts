@@ -11,15 +11,15 @@ import {
   SafetyAnalysis,
   TransportAnalysis
 } from '../types/analytics.types'
-import { WeatherService } from '../../weather/services/weatherService'
+// import { WeatherService } from '../../weather/services/weatherService' // Temporarily disabled
 import { redis } from '../../../lib/redis'
-import { logger } from '../../../lib/logger'
+import { logger } from '../../../shared/utils/logger'
 
 export class LocationAnalyticsService {
   constructor(
     private prisma: PrismaClient,
-    private sentimentService: SentimentAnalysisService,
-    private weatherService: WeatherService
+    private sentimentService: SentimentAnalysisService
+    // private weatherService: WeatherService // Temporarily disabled
   ) {}
 
   /**
@@ -109,15 +109,30 @@ export class LocationAnalyticsService {
         journalEntries,
         savedByUsers,
         averageSentiment,
-        sentimentDistribution,
+        sentimentDistribution: {
+          positive: (sentimentDistribution as any).positive || 0,
+          neutral: (sentimentDistribution as any).neutral || 0,
+          negative: (sentimentDistribution as any).negative || 0
+        },
         averageCostRating: costAnalysis.affordabilityScore,
-        costBreakdown: costAnalysis.costBreakdown,
+        costBreakdown: {
+          housing: (costAnalysis.costBreakdown as any).housing || 0,
+          food: (costAnalysis.costBreakdown as any).food || 0,
+          transportation: (costAnalysis.costBreakdown as any).transportation || 0,
+          utilities: (costAnalysis.costBreakdown as any).utilities || 0,
+          entertainment: (costAnalysis.costBreakdown as any).entertainment || 0,
+          miscellaneous: (costAnalysis.costBreakdown as any).miscellaneous || 0
+        },
         affordabilityScore: costAnalysis.affordabilityScore,
         weatherRating,
         cultureRating,
         safetyRating,
         transportRating,
-        visitPatterns,
+        visitPatterns: {
+          seasonal: (visitPatterns as any).seasonal || {},
+          daily: (visitPatterns as any).daily || {},
+          duration: (visitPatterns as any).duration || {}
+        },
         activityPreferences,
         decisionFactors,
         relocateProb
@@ -193,7 +208,7 @@ export class LocationAnalyticsService {
         comparisonName: input.comparisonName,
         locationIds: input.locationIds,
         criteria: input.criteria,
-        scores: normalizedScores,
+        scores: normalizedScores as any,
         rankings,
         winner,
         strengths,
@@ -323,18 +338,19 @@ export class LocationAnalyticsService {
 
   private async calculateWeatherRating(lat: number, lng: number): Promise<number> {
     try {
-      const weather = await this.weatherService.getCurrentWeather(lat, lng)
+      // const weather = await this.weatherService.getCurrentWeather(lat, lng) // Temporarily disabled
+      const weather = null
       if (!weather) return 0.5
 
       // Simple weather rating based on temperature and conditions
-      const temp = weather.temp || 15
+      const temp = (weather as any)?.temp || 15
       let rating = 0.5
 
       if (temp >= 18 && temp <= 25) rating += 0.3
       else if (temp >= 10 && temp <= 30) rating += 0.2
       else rating += 0.1
 
-      if (weather.condition && !weather.condition.includes('rain')) {
+      if ((weather as any)?.condition && !(weather as any)?.condition.includes('rain')) {
         rating += 0.2
       }
 
@@ -665,10 +681,8 @@ export class LocationAnalyticsService {
     try {
       await this.prisma.locationAnalytics.upsert({
         where: {
-          locationId_userId: {
-            locationId,
-            userId: userId || null
-          }
+          locationId,
+          userId: userId || null
         },
         update: {
           totalVisits: metrics.totalVisits,

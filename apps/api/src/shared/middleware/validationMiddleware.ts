@@ -15,7 +15,7 @@ export const validationMiddleware = (
       message: error.msg
     }));
 
-    throw new AppError('Validation failed', 400, errorMessages);
+    throw new AppError('Validation failed', 400, JSON.stringify(errorMessages));
   }
   
   next();

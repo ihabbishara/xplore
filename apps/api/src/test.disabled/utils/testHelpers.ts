@@ -65,6 +65,7 @@ export const createAuthenticatedRequest = (
       authorization: `Bearer ${token}`,
     },
     user: {
+      id: userId,
       userId,
       email: 'test@example.com',
       emailVerified: true,

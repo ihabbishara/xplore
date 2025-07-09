@@ -12,7 +12,7 @@ import {
 export class LocationController {
   static async search(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { q: query, types, limit } = req.query;
+      const { query, types, limit } = req.query;
 
       if (!query || typeof query !== 'string') {
         throw new ValidationError('Search query is required');
@@ -93,7 +93,7 @@ export class LocationController {
 
   static async saveLocation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.userId;
+      const userId = (req as any).user.userId;
       const validatedData = saveLocationSchema.parse(req.body);
 
       const savedLocation = await LocationService.saveLocation(userId, validatedData);
@@ -108,7 +108,7 @@ export class LocationController {
 
   static async removeLocation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.userId;
+      const userId = (req as any).user.userId;
       const { locationId } = req.params;
 
       await LocationService.removeLocation(userId, locationId);
@@ -121,7 +121,20 @@ export class LocationController {
 
   static async getSavedLocations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.userId;
+      // Handle case where user is not authenticated (for development)
+      if (!(req as any).user) {
+        res.json({
+          data: [],
+          meta: {
+            total: 0,
+            page: 1,
+            limit: 20,
+          },
+        });
+        return;
+      }
+
+      const userId = (req as any).user.userId;
       const query = savedLocationsQuerySchema.parse(req.query);
 
       const result = await LocationService.getSavedLocations(userId, query);
@@ -141,7 +154,7 @@ export class LocationController {
 
   static async updateSavedLocation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.userId;
+      const userId = (req as any).user.userId;
       const { locationId } = req.params;
       const validatedData = updateSavedLocationSchema.parse(req.body);
 
@@ -161,7 +174,7 @@ export class LocationController {
 
   static async updateNotes(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.userId;
+      const userId = (req as any).user.userId;
       const { locationId } = req.params;
       const { notes } = req.body;
 
@@ -183,7 +196,7 @@ export class LocationController {
 
   static async updateTags(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.userId;
+      const userId = (req as any).user.userId;
       const { locationId } = req.params;
       const { tags } = req.body;
 
@@ -205,7 +218,15 @@ export class LocationController {
 
   static async getMapViewLocations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.userId;
+      // Handle case where user is not authenticated (for development)
+      if (!(req as any).user) {
+        res.json({
+          data: [],
+        });
+        return;
+      }
+
+      const userId = (req as any).user.userId;
       const locations = await LocationService.getMapViewLocations(userId);
 
       res.json({
@@ -218,7 +239,7 @@ export class LocationController {
 
   static async batchSaveLocations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.userId;
+      const userId = (req as any).user.userId;
       const validatedData = batchSaveLocationsSchema.parse(req.body);
 
       const savedLocations = await LocationService.batchSaveLocations(userId, validatedData);

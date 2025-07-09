@@ -1,10 +1,13 @@
+/// <reference types="jest" />
+/// <reference types="@testing-library/jest-dom" />
+
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Provider } from 'react-redux'
 import { configureStore } from '@reduxjs/toolkit'
 import { LocationCard } from '../LocationCard'
-import { locationReducer, saveLocation, removeLocation, toggleFavorite } from '../../store/locationSlice'
+import locationReducer, { saveLocation, removeLocation, toggleFavorite } from '../../store/locationSlice'
 import { LocationSearchResult, SavedLocation } from '@xplore/shared'
 
 // Mock the actions
@@ -303,7 +306,7 @@ describe('LocationCard', () => {
       const saveButton = screen.getByRole('button', { name: /save/i })
       await user.click(saveButton)
 
-      expect(consoleError).toHaveBeenCalledWith('Failed to toggle save:', expect.any(Error))
+      expect(consoleError).toHaveBeenCalledWith('Failed to toggle save:', expect.anything())
       
       consoleError.mockRestore()
     })

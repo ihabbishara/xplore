@@ -9,7 +9,7 @@ import { LocationAnalyticsService } from './locationAnalyticsService'
 import { DashboardService } from './dashboardService'
 import { BehaviorPatternService } from './behaviorPatternService'
 import { redis } from '../../../lib/redis'
-import { logger } from '../../../lib/logger'
+import { logger } from '../../../shared/utils/logger'
 import fs from 'fs'
 import path from 'path'
 import PDFDocument from 'pdfkit'
@@ -114,7 +114,7 @@ export class ExportReportingService {
       }
 
       // Cache result
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(result))
+      await redis.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(result))
       
       // Log export
       await this.logExport(userId, options, result, duration)
@@ -277,7 +277,7 @@ export class ExportReportingService {
           sections: exp.sections,
           createdAt: exp.createdAt,
           fileSize: exp.fileSize,
-          downloadUrl: exp.downloadUrl
+          downloadUrl: exp.downloadUrl || undefined
         })),
         total
       }
@@ -523,7 +523,7 @@ export class ExportReportingService {
     }
   }
 
-  private addPDFSection(doc: PDFDocument, section: string, data: any, options: ExportOptions): void {
+  private addPDFSection(doc: any, section: string, data: any, options: ExportOptions): void {
     doc.addPage()
     doc.fontSize(18).text(section.replace('_', ' ').toUpperCase(), { underline: true })
     doc.moveDown()
@@ -543,7 +543,7 @@ export class ExportReportingService {
     }
   }
 
-  private addPDFOverview(doc: PDFDocument, overview: DashboardOverview): void {
+  private addPDFOverview(doc: any, overview: DashboardOverview): void {
     doc.fontSize(12)
     doc.text(`Total Locations: ${overview.totalLocations}`)
     doc.text(`Total Trips: ${overview.totalTrips}`)
@@ -559,7 +559,7 @@ export class ExportReportingService {
     }
   }
 
-  private addPDFMetrics(doc: PDFDocument, metrics: any): void {
+  private addPDFMetrics(doc: any, metrics: any): void {
     doc.fontSize(12)
     if (Array.isArray(metrics)) {
       metrics.forEach((metric, index) => {
@@ -573,7 +573,7 @@ export class ExportReportingService {
     }
   }
 
-  private addPDFInsights(doc: PDFDocument, insights: any): void {
+  private addPDFInsights(doc: any, insights: any): void {
     doc.fontSize(12)
     if (insights?.insights && Array.isArray(insights.insights)) {
       insights.insights.forEach((insight: any, index: number) => {
@@ -586,7 +586,7 @@ export class ExportReportingService {
   }
 
   private async addExcelSection(
-    worksheet: ExcelJS.Worksheet,
+    worksheet: any,
     section: string,
     data: any,
     options: ExportOptions
@@ -616,7 +616,7 @@ export class ExportReportingService {
     }
   }
 
-  private addExcelOverview(worksheet: ExcelJS.Worksheet, overview: DashboardOverview): void {
+  private addExcelOverview(worksheet: any, overview: DashboardOverview): void {
     worksheet.addRow(['Metric', 'Value'])
     worksheet.addRow(['Total Locations', overview.totalLocations])
     worksheet.addRow(['Total Trips', overview.totalTrips])
@@ -633,7 +633,7 @@ export class ExportReportingService {
     }
   }
 
-  private addExcelMetrics(worksheet: ExcelJS.Worksheet, metrics: any): void {
+  private addExcelMetrics(worksheet: any, metrics: any): void {
     if (Array.isArray(metrics)) {
       worksheet.addRow(['Location ID', 'Total Visits', 'Average Sentiment', 'Weather Rating'])
       metrics.forEach((metric: LocationMetrics) => {
@@ -647,7 +647,7 @@ export class ExportReportingService {
     }
   }
 
-  private addExcelSummary(worksheet: ExcelJS.Worksheet, data: any, options: ExportOptions): void {
+  private addExcelSummary(worksheet: any, data: any, options: ExportOptions): void {
     worksheet.addRow(['EXPORT SUMMARY'])
     worksheet.addRow(['Generated At', data.generatedAt])
     worksheet.addRow(['Sections', options.sections.join(', ')])

@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { SentimentResult, SentimentAnalysisInput } from '../types/analytics.types'
-import { logger } from '../../../lib/logger'
+import { logger } from '../../../shared/utils/logger'
 
 export class SentimentAnalysisService {
   private openaiApiKey: string

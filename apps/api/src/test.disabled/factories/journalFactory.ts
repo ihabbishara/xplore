@@ -1,4 +1,4 @@
-import { JournalEntry, JournalMedia, VoiceTranscription } from '@prisma/client'
+import { JournalEntry, JournalMedia, VoiceTranscription, Prisma } from '@prisma/client'
 
 let journalIdCounter = 1
 let mediaIdCounter = 1
@@ -14,52 +14,52 @@ export const createMockJournalEntry = (
   locationId: null,
   title: `Journal Entry ${journalIdCounter}`,
   content: 'Today was an amazing day exploring the city...',
-  mood: 'happy',
-  weather: { temp: 25, condition: 'sunny' },
-  tags: ['travel', 'adventure'],
-  isPrivate: false,
+  entryType: 'general',
+  weatherData: { temp: 25, condition: 'sunny' },
+  sharedWith: [],
+  privacyLevel: 'private',
   coordinates: [0, 0],
-  locationName: 'Test Location',
+  address: 'Test Location',
+  timezone: 'UTC',
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,
 })
 
 export const createMockJournalMedia = (
-  journalEntryId: string,
+  entryId: string,
   overrides?: Partial<JournalMedia>
 ): JournalMedia => ({
   id: `media-${mediaIdCounter++}`,
-  journalEntryId,
-  type: 'photo',
-  url: `https://example.com/photo-${mediaIdCounter}.jpg`,
-  thumbnailUrl: `https://example.com/photo-${mediaIdCounter}-thumb.jpg`,
+  entryId,
+  mediaType: 'photo',
+  filePath: `https://example.com/photo-${mediaIdCounter}.jpg`,
+  thumbnailPath: `https://example.com/photo-${mediaIdCounter}-thumb.jpg`,
   caption: 'Test photo caption',
-  metadata: {
+  exifData: {
     width: 1920,
     height: 1080,
-    size: 1024000,
-    mimeType: 'image/jpeg',
   },
-  order: mediaIdCounter,
+  originalFilename: `photo-${mediaIdCounter}.jpg`,
+  fileSize: BigInt(1024000),
+  mimeType: 'image/jpeg',
+  altText: 'Test photo',
+  orderIndex: mediaIdCounter,
   createdAt: new Date(),
-  updatedAt: new Date(),
   ...overrides,
 })
 
 export const createMockVoiceTranscription = (
-  journalEntryId: string,
+  entryId: string,
   overrides?: Partial<VoiceTranscription>
 ): VoiceTranscription => ({
   id: `transcription-${transcriptionIdCounter++}`,
-  journalEntryId,
-  audioUrl: `https://example.com/audio-${transcriptionIdCounter}.mp3`,
-  transcription: 'This is a test transcription of the voice note.',
-  duration: 30,
+  entryId,
+  audioFilePath: `https://example.com/audio-${transcriptionIdCounter}.mp3`,
+  transcriptionText: 'This is a test transcription of the voice note.',
   language: 'en',
-  confidence: 0.95,
-  provider: 'whisper',
+  confidenceScore: new Prisma.Decimal(0.95),
+  processingStatus: 'completed',
   createdAt: new Date(),
-  updatedAt: new Date(),
   ...overrides,
 })

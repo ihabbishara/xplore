@@ -10,7 +10,7 @@ import { LocationAnalyticsService } from './locationAnalyticsService'
 import { SentimentAnalysisService } from './sentimentAnalysisService'
 import { CostIntelligenceService } from './costIntelligenceService'
 import { redis } from '../../../lib/redis'
-import { logger } from '../../../lib/logger'
+import { logger } from '../../../shared/utils/logger'
 
 interface DashboardCache {
   overview: DashboardOverview
@@ -129,7 +129,7 @@ export class DashboardService {
       }
 
       // Cache the result
-      await redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(overview))
+      await redis.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(overview))
 
       return overview
     } catch (error) {
@@ -185,7 +185,7 @@ export class DashboardService {
           type: insight.insightType,
           title: insight.title,
           content: insight.content,
-          confidence: insight.confidence,
+          confidence: Number(insight.confidence),
           actionable: insight.actionable,
           createdAt: insight.createdAt,
           relatedLocations: insight.relatedLocations
@@ -462,8 +462,8 @@ export class DashboardService {
 
       // Calculate rankings
       const sortedLocations = Object.entries(locationData).sort(([, a], [, b]) => {
-        const aTotal = Object.values(a.scores).reduce((sum: number, score: number) => sum + score, 0)
-        const bTotal = Object.values(b.scores).reduce((sum: number, score: number) => sum + score, 0)
+        const aTotal = Object.values(a.scores).reduce((sum: number, score: any) => sum + (score as number), 0)
+        const bTotal = Object.values(b.scores).reduce((sum: number, score: any) => sum + (score as number), 0)
         return bTotal - aTotal
       })
 
@@ -479,7 +479,7 @@ export class DashboardService {
       const summary = `${winnerData.name} ranks highest with strong performance across multiple criteria`
       const recommendations = [
         `Consider ${winnerData.name} for your next exploration`,
-        `${winnerData.name} shows excellent ${Object.entries(winnerData.scores).filter(([, score]) => score > 0.7).map(([criterion]) => criterion).join(', ')}`
+        `${winnerData.name} shows excellent ${Object.entries(winnerData.scores).filter(([, score]) => (score as number) > 0.7).map(([criterion]) => criterion).join(', ')}`
       ]
 
       return {
@@ -544,17 +544,30 @@ export class DashboardService {
         lastUpdated: new Date()
       }
 
-      await this.prisma.dashboardCache.upsert({
-        where: { userId },
-        update: {
-          cacheData: cacheData as any,
-          lastUpdated: new Date()
-        },
-        create: {
-          userId,
-          cacheData: cacheData as any
-        }
+      // Create or update cache entry
+      const existingCache = await this.prisma.dashboardCache.findFirst({
+        where: { userId, cacheType: 'overview' }
       })
+
+      if (existingCache) {
+        await this.prisma.dashboardCache.update({
+          where: { id: existingCache.id },
+          data: {
+            data: cacheData as any,
+            lastAccessed: new Date()
+          }
+        })
+      } else {
+        await this.prisma.dashboardCache.create({
+          data: {
+            userId,
+            cacheKey: `overview-${userId}`,
+            cacheType: 'overview',
+            data: cacheData as any,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+          }
+        })
+      }
     } catch (error) {
       logger.error('Error updating dashboard cache:', error)
       throw error
@@ -642,7 +655,7 @@ export class DashboardService {
     return analytics.map(analytic => ({
       locationId: analytic.locationId,
       name: analytic.location?.name || 'Unknown',
-      score: analytic.comparisonScore || 0,
+      score: Number(analytic.comparisonScore) || 0,
       visits: analytic.totalVisits
     }))
   }
@@ -661,7 +674,7 @@ export class DashboardService {
 
     if (analytics.length === 0) return 0
 
-    const totalSentiment = analytics.reduce((sum, analytic) => sum + (analytic.averageSentiment || 0), 0)
+    const totalSentiment = analytics.reduce((sum, analytic) => sum + (Number(analytic.averageSentiment) || 0), 0)
     return totalSentiment / analytics.length
   }
 
@@ -788,7 +801,7 @@ export class DashboardService {
       id: insight.id,
       type: insight.insightType,
       title: insight.title,
-      confidence: insight.confidence,
+      confidence: Number(insight.confidence),
       createdAt: insight.createdAt
     }))
   }
@@ -801,7 +814,7 @@ export class DashboardService {
   }>> {
     const trips = await this.prisma.trip.findMany({
       where: {
-        userId,
+        creatorId: userId,
         startDate: { gt: new Date() }
       },
       include: {
@@ -949,14 +962,14 @@ export class DashboardService {
         take: 50
       }),
       this.prisma.trip.findMany({
-        where: { userId },
+        where: { creatorId: userId },
         orderBy: { createdAt: 'desc' },
         take: 20,
         include: { destinations: true }
       }),
       this.prisma.userSavedLocation.findMany({
         where: { userId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { savedAt: 'desc' },
         take: 20,
         include: { location: true }
       })

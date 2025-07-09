@@ -11,7 +11,7 @@ import {
   deleteAccountValidation
 } from '../validations/user.validation';
 
-const router = Router();
+const router: Router = Router();
 
 // Rate limiter for user operations
 const userLimiter = createRateLimiter({

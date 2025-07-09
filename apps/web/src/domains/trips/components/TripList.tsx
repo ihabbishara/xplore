@@ -1,8 +1,12 @@
 'use client'
 
 import React from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
+import NextLink from 'next/link'
+import NextImage from 'next/image'
+
+// Type assertions to fix React 18/19 conflicts
+const Link = NextLink as any
+const Image = NextImage as any
 import { format } from 'date-fns'
 import { 
   Calendar,

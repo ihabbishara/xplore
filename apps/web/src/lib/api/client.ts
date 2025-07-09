@@ -41,8 +41,9 @@ apiClient.interceptors.response.use(
       // Token expired or invalid
       if (typeof window !== 'undefined') {
         try {
-          const { store } = require('@/store')
-          const { logout } = require('@/domains/auth/store/authSlice')
+          // Import store and logout action dynamically
+          const { store } = await import('@/store')
+          const { logout } = await import('@/domains/auth/store/authSlice')
           store.dispatch(logout())
           
           // Redirect to login if not already there

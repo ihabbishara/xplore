@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xplore - Offline</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background-color: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .offline-container {
+      text-align: center;
+      padding: 2rem;
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      max-width: 400px;
+      margin: 1rem;
+    }
+    .offline-icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 1.5rem;
+      opacity: 0.8;
+    }
+    h1 {
+      color: #1f2937;
+      font-size: 1.875rem;
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+    }
+    p {
+      color: #6b7280;
+      font-size: 1rem;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+    .retry-button {
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .retry-button:hover {
+      background-color: #2563eb;
+    }
+    .offline-features {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid #e5e7eb;
+    }
+    .offline-features h2 {
+      font-size: 1.25rem;
+      color: #374151;
+      margin-bottom: 1rem;
+    }
+    .feature-list {
+      text-align: left;
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+    .feature-list li {
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <svg class="offline-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#9ca3af"/>
+      <path d="M3.93 3.93L20.07 20.07" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    
+    <h1>You're Offline</h1>
+    <p>It looks like you've lost your internet connection. Don't worry - you can still access your saved content!</p>
+    
+    <button class="retry-button" onclick="window.location.reload()">
+      Try Again
+    </button>
+    
+    <div class="offline-features">
+      <h2>Available Offline:</h2>
+      <ul class="feature-list">
+        <li>✓ View saved locations</li>
+        <li>✓ Access your journal entries</li>
+        <li>✓ Use downloaded maps</li>
+        <li>✓ Review your checklists</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Check for connection periodically
+    setInterval(() => {
+      if (navigator.onLine) {
+        window.location.reload();
+      }
+    }, 5000);
+  </script>
+</body>
+</html>

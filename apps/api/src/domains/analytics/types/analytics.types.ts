@@ -126,6 +126,8 @@ export interface DecisionMatrixResult {
   rankings?: Record<string, string>
   sensitivity?: Record<string, any>
   recommendation?: string
+  finalDecision?: string
+  decisionReason?: string
 }
 
 export interface BehaviorPatternInput {
