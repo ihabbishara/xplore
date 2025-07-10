@@ -40,4 +40,7 @@ Transform how people explore, experience, and connect with places by providing a
 - Use emoji and clear formatting in issue comments
 - Maintain transparency and detailed documentation for each issue
 
+### Testing and Quality Assurance Memories
+- For any UI/UX change or implementation test with playwright mcp the functionality step by step.
+
 ## Other Documentation Sections Remain Unchanged

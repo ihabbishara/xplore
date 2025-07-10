@@ -11,8 +11,34 @@ import {
 } from '@xplore/shared';
 
 export class LocationService {
-  static async search(params: LocationSearchRequest): Promise<LocationSearchResult[]> {
-    const { data } = await apiClient.get('/locations/search', { params });
+  static async search(params: LocationSearchRequest & { filters?: string[] }): Promise<LocationSearchResult[]> {
+    // Map UI filters to LocationType
+    const mapFiltersToTypes = (filters?: string[]): LocationType[] => {
+      if (!filters || filters.length === 0) {
+        return ['city', 'region', 'poi']; // Default types
+      }
+      
+      const typeMap: Record<string, LocationType[]> = {
+        cities: ['city'],
+        nature: ['poi', 'region'],
+        beaches: ['poi'],
+        mountains: ['poi', 'region'],
+        historic: ['poi'],
+        culture: ['poi', 'city']
+      };
+      
+      const mappedTypes = filters.flatMap(filter => typeMap[filter] || []);
+      return mappedTypes.length > 0 ? [...new Set(mappedTypes)] : ['city', 'region', 'poi'];
+    };
+
+    const searchParams = {
+      query: params.query,
+      types: mapFiltersToTypes(params.filters),
+      limit: params.limit,
+      proximity: params.proximity
+    };
+
+    const { data } = await apiClient.get('/locations/search', { params: searchParams });
     return data.data;
   }
 

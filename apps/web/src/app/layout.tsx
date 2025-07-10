@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   title: 'Xplore - Your Exploration Companion',
   description: 'Plan trips, discover locations, and make informed relocation decisions',
   manifest: '/manifest.json',
-  themeColor: '#3b82f6',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -31,6 +30,10 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  themeColor: '#3b82f6',
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -49,7 +52,11 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <div className="min-h-screen pb-16 md:pb-0">
+            {children}
+          </div>
+        </Providers>
       </body>
     </html>
   )

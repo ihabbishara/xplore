@@ -17,6 +17,28 @@ const withPWA = require('next-pwa')({
       }
     },
     {
+      urlPattern: /^https:\/\/[abc]?\.?tile\.openstreetmap\.org\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'osm-tiles-cache',
+        expiration: {
+          maxEntries: 200,
+          maxAgeSeconds: 7 * 24 * 60 * 60 // 7 days
+        }
+      }
+    },
+    {
+      urlPattern: /^https:\/\/server\.arcgisonline\.com\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'arcgis-tiles-cache',
+        expiration: {
+          maxEntries: 200,
+          maxAgeSeconds: 7 * 24 * 60 * 60 // 7 days
+        }
+      }
+    },
+    {
       urlPattern: /^https:\/\/.*\.cloudinary\.com\/.*/i,
       handler: 'CacheFirst',
       options: {
@@ -69,7 +91,23 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   images: {
-    domains: ['localhost', 'api.mapbox.com', 'res.cloudinary.com'],
+    domains: [
+      'localhost', 
+      'api.mapbox.com', 
+      'res.cloudinary.com',
+      'tile.openstreetmap.org',
+      'a.tile.openstreetmap.org',
+      'b.tile.openstreetmap.org',
+      'c.tile.openstreetmap.org',
+      'server.arcgisonline.com'
+    ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'api.mapbox.com',
+        pathname: '/styles/v1/mapbox/**',
+      },
+    ],
   },
 }
 

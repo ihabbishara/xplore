@@ -88,33 +88,33 @@ class OfflineDatabase {
         // Create object stores
         if (!db.objectStoreNames.contains('locations')) {
           const locationStore = db.createObjectStore('locations', { keyPath: 'id' })
-          locationStore.createIndex('placeId', 'placeId')
-          locationStore.createIndex('savedAt', 'savedAt')
+          ;(locationStore as any).createIndex('placeId', 'placeId')
+          ;(locationStore as any).createIndex('savedAt', 'savedAt')
         }
 
         if (!db.objectStoreNames.contains('trips')) {
           const tripStore = db.createObjectStore('trips', { keyPath: 'id' })
-          tripStore.createIndex('startDate', 'startDate')
-          tripStore.createIndex('savedAt', 'savedAt')
+          ;(tripStore as any).createIndex('startDate', 'startDate')
+          ;(tripStore as any).createIndex('savedAt', 'savedAt')
         }
 
         if (!db.objectStoreNames.contains('journalEntries')) {
           const journalStore = db.createObjectStore('journalEntries', { keyPath: 'id' })
-          journalStore.createIndex('tripId', 'tripId')
-          journalStore.createIndex('locationId', 'locationId')
-          journalStore.createIndex('createdAt', 'createdAt')
+          ;(journalStore as any).createIndex('tripId', 'tripId')
+          ;(journalStore as any).createIndex('locationId', 'locationId')
+          ;(journalStore as any).createIndex('createdAt', 'createdAt')
         }
 
         if (!db.objectStoreNames.contains('checklists')) {
           const checklistStore = db.createObjectStore('checklists', { keyPath: 'id' })
-          checklistStore.createIndex('category', 'category')
-          checklistStore.createIndex('createdAt', 'createdAt')
+          ;(checklistStore as any).createIndex('category', 'category')
+          ;(checklistStore as any).createIndex('createdAt', 'createdAt')
         }
 
         if (!db.objectStoreNames.contains('syncQueue')) {
           const syncStore = db.createObjectStore('syncQueue', { keyPath: 'id' })
-          syncStore.createIndex('type', 'type')
-          syncStore.createIndex('timestamp', 'timestamp')
+          ;(syncStore as any).createIndex('type', 'type')
+          ;(syncStore as any).createIndex('timestamp', 'timestamp')
         }
       },
     })
@@ -206,7 +206,7 @@ class OfflineDatabase {
 
   async getJournalEntriesByTrip(tripId: string): Promise<XploreDB['journalEntries']['value'][]> {
     const db = await this.ensureDb()
-    const index = db.transaction('journalEntries').store.index('tripId')
+    const index = (db.transaction('journalEntries').store as any).index('tripId')
     return index.getAll(tripId)
   }
 
@@ -271,9 +271,9 @@ class OfflineDatabase {
   // Clear all offline data
   async clearAll(): Promise<void> {
     const db = await this.ensureDb()
-    const stores: (keyof XploreDB)[] = ['locations', 'trips', 'journalEntries', 'checklists', 'syncQueue']
+    const stores = ['locations', 'trips', 'journalEntries', 'checklists', 'syncQueue'] as const
     
-    const tx = db.transaction(stores, 'readwrite')
+    const tx = db.transaction(stores as any, 'readwrite')
     await Promise.all(stores.map(store => tx.objectStore(store).clear()))
     await tx.done
   }

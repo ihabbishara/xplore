@@ -1,6 +1,15 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
 export default function HomePage() {
+  // TODO: Check if user is authenticated and redirect to dashboard
+  // For now, we'll show the landing page, but in production this should check auth status
+  
+  // Temporary redirect to dashboard for development
+  if (process.env.NODE_ENV === 'development') {
+    redirect('/dashboard')
+  }
+  
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="z-10 max-w-5xl w-full items-center justify-between text-sm">
@@ -13,7 +22,7 @@ export default function HomePage() {
         
         <div className="flex gap-4 justify-center">
           <Link
-            href="/auth/register"
+            href="/dashboard"
             className="rounded-lg bg-blue-500 px-6 py-3 text-white hover:bg-blue-600 transition-colors"
           >
             Get Started

@@ -59,8 +59,11 @@ const initialState: LocationState = {
 // Async thunks
 export const searchLocations = createAsyncThunk(
   'locations/search',
-  async (query: string) => {
-    return await LocationService.search({ query });
+  async (params: { query: string; filters?: string[] }) => {
+    return await LocationService.search({ 
+      query: params.query,
+      filters: params.filters 
+    });
   }
 );
 

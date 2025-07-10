@@ -21,29 +21,40 @@ export class LocationService {
   private static MAPBOX_API_URL = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
   private static MAPBOX_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
   private static CACHE_TTL = 3600; // 1 hour in seconds
+  
+  static {
+    // Log token status on class initialization
+    logger.info('LocationService initialized', {
+      hasMapboxToken: !!process.env.MAPBOX_ACCESS_TOKEN,
+      tokenLength: process.env.MAPBOX_ACCESS_TOKEN?.length || 0,
+      tokenPrefix: process.env.MAPBOX_ACCESS_TOKEN?.substring(0, 10) || 'undefined'
+    });
+  }
 
   static async search(params: LocationSearchRequest): Promise<LocationSearchResult[]> {
-    const { query, types = ['country', 'region', 'place'], limit = 10 } = params;
+    const { query, types = ['city', 'region', 'poi'], limit = 10 } = params;
+    
+    // Map our LocationType to Mapbox types
+    const mapToMapboxTypes = (ourTypes: LocationType[]): string[] => {
+      const typeMap: Record<LocationType, string[]> = {
+        'city': ['place', 'locality', 'district'],
+        'region': ['region'],
+        'country': ['country'],
+        'poi': ['poi', 'poi.landmark'],
+        'address': ['address', 'postcode', 'neighborhood']
+      };
+      
+      const mapboxTypes = ourTypes.flatMap(type => typeMap[type] || []);
+      return [...new Set(mapboxTypes)]; // Remove duplicates
+    };
+    
+    const mapboxTypes = mapToMapboxTypes(types);
+    logger.debug('Mapping types', { original: types, mapped: mapboxTypes });
 
     if (!this.MAPBOX_TOKEN) {
+      logger.error('Mapbox API token not configured');
       throw new AppError('Mapbox API token not configured', 500);
     }
-
-    // First, try database search with full-text search
-    // const dbResults = await locationQueries.searchLocations(query, limit);
-    // if (dbResults.length >= limit) {
-    //   return dbResults.map((loc: any) => ({
-    //     id: loc.id,
-    //     placeId: loc.id,
-    //     name: loc.name,
-    //     country: loc.country || '',
-    //     city: loc.city,
-    //     region: '',
-    //     address: `${loc.city || ''}, ${loc.country || ''}`,
-    //     coordinates: { lat: loc.latitude, lng: loc.longitude },
-    //     type: 'city' as LocationType,
-    //   }));
-    // }
 
     // Use optimized cache
     const cacheKey = cache.generateKey('location:search', { query, types, limit });
@@ -56,10 +67,20 @@ export class LocationService {
 
     try {
       // Make request to Mapbox
-      const response = await axios.get(`${this.MAPBOX_API_URL}/${encodeURIComponent(query)}.json`, {
+      const mapboxUrl = `${this.MAPBOX_API_URL}/${encodeURIComponent(query)}.json`;
+      logger.debug('Mapbox API request:', {
+        url: mapboxUrl,
+        params: {
+          types: mapboxTypes.join(','),
+          limit,
+          language: 'en',
+        }
+      });
+      
+      const response = await axios.get(mapboxUrl, {
         params: {
           access_token: this.MAPBOX_TOKEN,
-          types: types.join(','),
+          types: mapboxTypes.join(','),
           limit,
           language: 'en',
         },
@@ -88,8 +109,17 @@ export class LocationService {
       
       logger.info(`Location search completed for: ${query}, found ${results.length} results`);
       return results;
-    } catch (error) {
-      logger.error('Mapbox API error:', error);
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStatus = error?.response?.status || 'Unknown status';
+      const errorData = error?.response?.data || 'No response data';
+      
+      logger.error('Mapbox API error:', {
+        message: errorMessage,
+        status: errorStatus,
+        data: errorData,
+        query
+      });
       throw new AppError('Failed to search locations', 500);
     }
   }
@@ -98,23 +128,6 @@ export class LocationService {
     if (!this.MAPBOX_TOKEN) {
       throw new AppError('Mapbox API token not configured', 500);
     }
-
-    // Try finding nearby location in database first
-    // const nearbyLocations = await locationQueries.getNearbyLocations(lat, lng, 1, 1);
-    // if (nearbyLocations.length > 0 && nearbyLocations[0].distance_km < 0.1) {
-    //   const loc = nearbyLocations[0];
-    //   return {
-    //     id: loc.id,
-    //     placeId: loc.id,
-    //     name: loc.name,
-    //     country: loc.country || '',
-    //     city: loc.city,
-    //     region: '',
-    //     address: `${loc.city || ''}, ${loc.country || ''}`,
-    //     coordinates: { lat: loc.latitude, lng: loc.longitude },
-    //     type: 'city' as LocationType,
-    //   };
-    // }
 
     const cacheKey = cache.generateKey('location:reverse', { lat, lng });
     const cached = await cache.get<LocationSearchResult>(cacheKey);
@@ -156,8 +169,18 @@ export class LocationService {
       await cache.set(cacheKey, result, cacheConfigs.medium);
       
       return result;
-    } catch (error) {
-      logger.error('Mapbox reverse geocode error:', error);
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStatus = error?.response?.status || 'Unknown status';
+      const errorData = error?.response?.data || 'No response data';
+      
+      logger.error('Mapbox reverse geocode error:', {
+        message: errorMessage,
+        status: errorStatus,
+        data: errorData,
+        lat,
+        lng
+      });
       throw new AppError('Failed to reverse geocode location', 500);
     }
   }
@@ -186,12 +209,16 @@ export class LocationService {
         return 'country';
       case 'place':
       case 'locality':
+      case 'district':
         return 'city';
       case 'region':
         return 'region';
       case 'poi':
+      case 'poi.landmark':
         return 'poi';
       case 'address':
+      case 'postcode':
+      case 'neighborhood':
         return 'address';
       default:
         return 'poi';
@@ -283,8 +310,14 @@ export class LocationService {
       await cache.invalidateByTags([`user:${userId}`]);
 
       return this.formatSavedLocation(savedLocation);
-    } catch (error) {
-      logger.error('Error saving location:', error);
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Error saving location:', {
+        message: errorMessage,
+        userId,
+        placeId: data.placeId,
+        locationName: data.name
+      });
       throw error;
     }
   }
@@ -518,8 +551,14 @@ export class LocationService {
 
             results.push(this.formatSavedLocation(savedLocation));
           }
-        } catch (error) {
-          logger.error(`Failed to save location ${locationData.name}:`, error);
+        } catch (error: any) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          logger.error(`Failed to save location ${locationData.name}:`, {
+            message: errorMessage,
+            userId,
+            placeId: locationData.placeId,
+            locationName: locationData.name
+          });
           // Continue with other locations
         }
       }

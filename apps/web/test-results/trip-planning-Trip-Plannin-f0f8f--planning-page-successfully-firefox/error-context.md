@@ -1,0 +1,143 @@
+# Page snapshot
+
+```yaml
+- heading "European Adventure" [level=1]
+- button "Edit trip name":
+  - img
+- paragraph: Thursday, Aug 15 - Thursday, Aug 22
+- text: 7 days • 2 destinations
+- heading "Destinations (2)" [level=3]
+- button:
+  - img
+- text: "1"
+- heading "Paris" [level=4]
+- paragraph: France
+- text: city
+- button "Remove destination":
+  - img
+- button:
+  - img
+- text: "2"
+- heading "Amsterdam" [level=4]
+- paragraph: Netherlands
+- text: city
+- button "Remove destination":
+  - img
+- status
+- navigation "Tabs":
+  - button "Timeline"
+  - button "Weather"
+- text: "1"
+- heading "Thursday, Aug 15" [level=3]
+- paragraph: 1 destination • 2 activities
+- button "Add activity":
+  - img
+- text: Eiffel Tower
+- button "Remove activity":
+  - img
+- text: Louvre Museum
+- button "Remove activity":
+  - img
+- button "+ Add activity"
+- text: "2"
+- heading "Friday, Aug 16" [level=3]
+- paragraph: 1 destination • 2 activities
+- button "Add activity":
+  - img
+- text: Notre Dame
+- button "Remove activity":
+  - img
+- text: Seine River Cruise
+- button "Remove activity":
+  - img
+- button "+ Add activity"
+- text: "3"
+- heading "Saturday, Aug 17" [level=3]
+- paragraph: 1 destination • 2 activities
+- button "Add activity":
+  - img
+- text: Montmartre
+- button "Remove activity":
+  - img
+- text: Sacré-Cœur
+- button "Remove activity":
+  - img
+- button "+ Add activity"
+- text: "4"
+- heading "Sunday, Aug 18" [level=3]
+- paragraph: 2 destinations • 1 activities
+- button "Add activity":
+  - img
+- text: Travel to Amsterdam
+- button "Remove activity":
+  - img
+- button "+ Add activity"
+- text: "5"
+- heading "Monday, Aug 19" [level=3]
+- paragraph: 1 destination • 2 activities
+- button "Add activity":
+  - img
+- text: Canal Tour
+- button "Remove activity":
+  - img
+- text: Van Gogh Museum
+- button "Remove activity":
+  - img
+- button "+ Add activity"
+- text: "6"
+- heading "Tuesday, Aug 20" [level=3]
+- paragraph: 1 destination • 2 activities
+- button "Add activity":
+  - img
+- text: Rijksmuseum
+- button "Remove activity":
+  - img
+- text: Vondelpark
+- button "Remove activity":
+  - img
+- button "+ Add activity"
+- text: "7"
+- heading "Wednesday, Aug 21" [level=3]
+- paragraph: 1 destination • 2 activities
+- button "Add activity":
+  - img
+- text: Anne Frank House
+- button "Remove activity":
+  - img
+- text: Jordaan District
+- button "Remove activity":
+  - img
+- button "+ Add activity"
+- text: "8"
+- heading "Thursday, Aug 22" [level=3]
+- paragraph: 1 destination • 1 activities
+- button "Add activity":
+  - img
+- text: Departure
+- button "Remove activity":
+  - img
+- button "+ Add activity"
+- button "Add Day":
+  - img
+  - text: Add Day
+- heading "Trip Summary" [level=3]
+- img
+- text: Duration 7 days
+- img
+- text: Distance 1,200 km
+- img
+- text: Budget $3,500.00
+- button "Save Trip"
+- button "Share Trip"
+- img
+- img
+- img
+- text: 1 Paris Start
+- img
+- text: 2 Amsterdam End Legend Start Stop End 2 destinations
+- button:
+  - img
+- img
+- textbox "Search destinations to add to your trip..."
+- alert
+```

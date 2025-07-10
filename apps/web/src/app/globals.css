@@ -1,3 +1,297 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Mapbox GL CSS */
+@import 'mapbox-gl/dist/mapbox-gl.css';
+
+@layer base {
+  :root {
+    /* Light Theme Colors */
+    --background: 0 0% 100%; /* white */
+    --foreground: 224 71% 4%; /* gray-950 */
+    --muted: 220 14.3% 95.9%; /* gray-100 */
+    --muted-foreground: 220 8.9% 46.1%; /* gray-500 */
+    
+    --card: 0 0% 100%; /* white */
+    --card-foreground: 224 71% 4%; /* gray-950 */
+    
+    --popover: 0 0% 100%; /* white */
+    --popover-foreground: 224 71% 4%; /* gray-950 */
+    
+    --border: 220 13% 91%; /* gray-200 */
+    --input: 220 13% 91%; /* gray-200 */
+    
+    --primary: 199 89% 48%; /* primary-500 */
+    --primary-foreground: 0 0% 100%; /* white */
+    
+    --secondary: 220 14.3% 95.9%; /* gray-100 */
+    --secondary-foreground: 224 71% 4%; /* gray-950 */
+    
+    --accent: 199 89% 48%; /* primary-500 */
+    --accent-foreground: 0 0% 100%; /* white */
+    
+    --success: 160 84% 39%; /* success-500 */
+    --success-foreground: 0 0% 100%; /* white */
+    
+    --warning: 38 92% 50%; /* warning */
+    --warning-foreground: 0 0% 100%; /* white */
+    
+    --error: 0 84% 60%; /* error */
+    --error-foreground: 0 0% 100%; /* white */
+    
+    --ring: 199 89% 48%; /* primary-500 */
+    
+    --radius: 0.5rem;
+  }
+  
+  .dark {
+    /* Dark Theme Colors */
+    --background: 224 71% 4%; /* gray-950 */
+    --foreground: 210 40% 98%; /* gray-50 */
+    --muted: 217 33% 17%; /* gray-800 */
+    --muted-foreground: 215 20.2% 65.1%; /* gray-400 */
+    
+    --card: 224 71% 4%; /* gray-950 */
+    --card-foreground: 210 40% 98%; /* gray-50 */
+    
+    --popover: 224 71% 4%; /* gray-950 */
+    --popover-foreground: 210 40% 98%; /* gray-50 */
+    
+    --border: 217 33% 17%; /* gray-800 */
+    --input: 217 33% 17%; /* gray-800 */
+    
+    --primary: 199 89% 48%; /* primary-500 */
+    --primary-foreground: 0 0% 100%; /* white */
+    
+    --secondary: 217 33% 17%; /* gray-800 */
+    --secondary-foreground: 210 40% 98%; /* gray-50 */
+    
+    --accent: 199 89% 48%; /* primary-500 */
+    --accent-foreground: 0 0% 100%; /* white */
+    
+    --success: 160 84% 39%; /* success-500 */
+    --success-foreground: 0 0% 100%; /* white */
+    
+    --warning: 38 92% 50%; /* warning */
+    --warning-foreground: 0 0% 100%; /* white */
+    
+    --error: 0 84% 60%; /* error */
+    --error-foreground: 0 0% 100%; /* white */
+    
+    --ring: 199 89% 48%; /* primary-500 */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Custom scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-lg;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+  
+  /* Focus styles */
+  *:focus {
+    outline: none;
+  }
+  
+  *:focus-visible {
+    @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+  
+  /* Selection styles */
+  ::selection {
+    @apply bg-primary/20 text-primary;
+  }
+}
+
+@layer components {
+  /* Typography Classes */
+  .h1 {
+    @apply text-5xl font-display font-bold tracking-tight;
+  }
+  
+  .h2 {
+    @apply text-4xl font-display font-semibold tracking-tight;
+  }
+  
+  .h3 {
+    @apply text-3xl font-display font-semibold;
+  }
+  
+  .h4 {
+    @apply text-2xl font-display font-medium;
+  }
+  
+  .h5 {
+    @apply text-xl font-sans font-medium;
+  }
+  
+  .h6 {
+    @apply text-lg font-sans font-medium;
+  }
+  
+  .body-large {
+    @apply text-lg font-sans;
+  }
+  
+  .body {
+    @apply text-base font-sans;
+  }
+  
+  .body-small {
+    @apply text-sm font-sans;
+  }
+  
+  .caption {
+    @apply text-xs font-sans text-muted-foreground;
+  }
+  
+  /* Container */
+  .container {
+    @apply mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  /* Glass morphism effect */
+  .glass {
+    @apply bg-background/80 backdrop-blur-md;
+  }
+  
+  /* Card styles */
+  .card {
+    @apply rounded-xl border bg-card text-card-foreground shadow-sm;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+  
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary via-accent-ocean to-accent-forest bg-clip-text text-transparent;
+  }
+  
+  /* Loading skeleton */
+  .skeleton {
+    @apply animate-pulse bg-muted rounded;
+  }
+}
+
+@layer utilities {
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  
+  /* Hide scrollbar utility */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Truncate utilities */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  
+  /* Gradient backgrounds */
+  .gradient-primary {
+    @apply bg-gradient-to-r from-primary-400 to-primary-600;
+  }
+  
+  .gradient-sunset {
+    @apply bg-gradient-to-r from-accent-sunset via-accent-coral to-accent-sand;
+  }
+  
+  .gradient-ocean {
+    @apply bg-gradient-to-r from-accent-ocean via-primary to-accent-forest;
+  }
+  
+  .gradient-earth {
+    @apply bg-gradient-to-r from-earth-400 via-earth-600 to-earth-800;
+  }
+  
+  /* Animation delays */
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+  
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+  
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+  
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+  
+  /* Leaflet custom styles */
+  .leaflet-container {
+    height: 100%;
+    width: 100%;
+    background: #f3f4f6;
+  }
+  
+  .custom-marker {
+    background: transparent;
+    border: none;
+  }
+}
