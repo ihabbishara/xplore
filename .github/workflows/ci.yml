@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         with:
           version: 8.15.0
       - uses: actions/setup-node@v3
@@ -54,7 +54,7 @@ jobs:
       JWT_REFRESH_SECRET: test-jwt-refresh-secret
     steps:
       - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         with:
           version: 8.15.0
       - uses: actions/setup-node@v3
@@ -81,7 +81,7 @@ jobs:
         app: [api, web]
     steps:
       - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         with:
           version: 8.15.0
       - uses: actions/setup-node@v3
